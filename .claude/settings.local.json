@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx skills:*)",
+      "Bash(cd \"C:/Project/Solana Website\" && npx create-next-app@latest superteam-my --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --yes 2>&1)",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npm install @supabase/supabase-js @supabase/ssr three @react-three/fiber @react-three/drei @types/three gsap framer-motion clsx tailwind-merge lucide-react 2>&1)",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npm install -D @tailwindcss/typography 2>&1)",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx next build 2>&1 | head -80)",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx next build 2>&1 | tail -40)",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx next build 2>&1 | tail -30)",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx next build 2>&1 | tail -25)",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx next build 2>&1 | tail -20)",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && node -e \"\nconst fs = require\\('fs'\\);\nconst buf = fs.readFileSync\\('public/models/ibm_pc.glb'\\);\n// Read GLB header\nconst magic = buf.readUInt32LE\\(0\\);\nconst version = buf.readUInt32LE\\(4\\);\nconst length = buf.readUInt32LE\\(8\\);\nconsole.log\\('Magic:', magic.toString\\(16\\), 'Version:', version, 'Length:', length\\);\n// Read JSON chunk\nconst chunkLen = buf.readUInt32LE\\(12\\);\nconst chunkType = buf.readUInt32LE\\(16\\);\nconst json = JSON.parse\\(buf.slice\\(20, 20 + chunkLen\\).toString\\('utf8'\\)\\);\nconsole.log\\('Scenes:', json.scenes?.length\\);\nconsole.log\\('Nodes:', json.nodes?.length\\);\nconsole.log\\('Meshes:', json.meshes?.length\\);\nconsole.log\\('Node names:', json.nodes?.slice\\(0, 20\\).map\\(n => n.name\\)\\);\n\" 2>&1)",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && find src -type f -name \"*.tsx\" -o -name \"*.ts\" | sort && echo \"---\" && find supabase -type f | sort && echo \"---\" && find public -type f | sort 2>/dev/null && echo \"---\" && ls -la *.md *.json *.ts 2>/dev/null)",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx gltfpack --help 2>&1 | head -5 || npx gltf-pipeline --help 2>&1 | head -5 || echo \"No GLB tools available\")",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx gltfpack -i public/models/ibm_pc.glb -o public/models/ibm_pc_opt.glb -tc -si 0.5 2>&1)",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx gltfpack -i public/models/ibm_pc.glb -o public/models/ibm_pc_opt.glb -si 0.5 2>&1)",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx gltfpack -i public/models/ibm_pc.glb -o public/models/ibm_pc_opt.glb -si 0.25 -cc 2>&1)",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx gltfpack -i public/models/ibm_pc.glb -o public/models/ibm_pc_lite.glb -si 0.1 -cc 2>&1)",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx --yes @gltf-transform/cli@latest inspect public/models/ibm_pc.glb 2>&1 | head -40)",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx @gltf-transform/cli@latest inspect public/models/ibm_pc.glb 2>&1 | grep -A 100 \"TEXTURES\")",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx @gltf-transform/cli@latest resize --width 512 --height 512 public/models/ibm_pc.glb public/models/ibm_pc_sm.glb 2>&1)",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx @gltf-transform/cli@latest inspect public/models/ibm_pc_sm.glb 2>&1 | grep -A 20 \"TEXTURES\")",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx gltfpack -i public/models/ibm_pc_sm.glb -o public/models/ibm_pc_sm.glb -si 0.5 2>&1)",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx next build 2>&1 | tail -15)",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npm install leva 2>&1 | tail -5)",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && grep -r \"OrbitControls\" node_modules/@react-three/drei/dist/index.js 2>/dev/null | head -1 || echo \"checking drei exports...\" && node -e \"const d = require\\('@react-three/drei'\\); console.log\\('OrbitControls' in d\\)\" 2>&1)",
+      "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && npx next build 2>&1 | tail -20)"
+    ]
+  }
+}
