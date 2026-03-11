@@ -25,7 +25,13 @@
       "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx next build 2>&1 | tail -15)",
       "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npm install leva 2>&1 | tail -5)",
       "Bash(cd \"C:/Project/Solana Website/superteam-my\" && grep -r \"OrbitControls\" node_modules/@react-three/drei/dist/index.js 2>/dev/null | head -1 || echo \"checking drei exports...\" && node -e \"const d = require\\('@react-three/drei'\\); console.log\\('OrbitControls' in d\\)\" 2>&1)",
-      "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && npx next build 2>&1 | tail -20)"
+      "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && npx next build 2>&1 | tail -20)",
+      "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && node -e \"const p=require\\('./package.json'\\); console.log\\('leva:', p.dependencies?.leva || 'NOT INSTALLED'\\)\")",
+      "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && npx next build 2>&1 | tail -25)",
+      "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && npx next build 2>&1 | tail -5)",
+      "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && npx next build 2>&1 | tail -30)",
+      "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && cmd /c \"npx next build\" 2>&1 | tail -5)",
+      "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && npx next build 2>&1 | tail -15)"
     ]
   }
 }

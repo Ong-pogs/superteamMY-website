@@ -192,6 +192,45 @@ body {
 }
 
 /* Noise overlay utility */
+/* ═══ CRT Entry Transition Effects ═══ */
+
+/* Fast flicker — simulates 60Hz CRT refresh visible wobble */
+@keyframes crt-entry-flicker {
+  0%   { opacity: 1; }
+  10%  { opacity: 0.85; }
+  20%  { opacity: 1; }
+  30%  { opacity: 0.9; }
+  40%  { opacity: 1; }
+  50%  { opacity: 0.7; }
+  55%  { opacity: 1; }
+  70%  { opacity: 0.95; }
+  80%  { opacity: 0.6; }
+  85%  { opacity: 1; }
+  100% { opacity: 0.9; }
+}
+.crt-entry-flicker {
+  animation: crt-entry-flicker 0.15s steps(3) infinite;
+}
+
+/* Rolling brightness bar — classic CRT interference band */
+@keyframes crt-rolling-bar {
+  0%   { top: -20%; }
+  100% { top: 120%; }
+}
+.crt-rolling-bar {
+  animation: crt-rolling-bar 3s linear infinite;
+}
+
+/* Interlace — alternating field shift every frame */
+@keyframes crt-interlace {
+  0%   { background-position: 0 0; }
+  50%  { background-position: 0 2px; }
+  100% { background-position: 0 0; }
+}
+.crt-interlace {
+  animation: crt-interlace 0.08s steps(2) infinite;
+}
+
 /* Fade out for white flash */
 @keyframes fadeOut {
   from { opacity: 0.9; }
