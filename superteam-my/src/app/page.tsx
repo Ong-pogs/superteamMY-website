@@ -59,7 +59,7 @@ export default function Home() {
           <LeftRail />
 
           <main>
-            <HeroSection />
+            <HeroSection animate={revealing || entered} />
             <MissionSection />
             <StatsSection />
             <MembersSpotlight />

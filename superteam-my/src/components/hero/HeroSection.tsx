@@ -1,190 +1,151 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import LanguageSwap from "./LanguageSwap";
 import SystemStatus from "./SystemStatus";
-import Button from "@/components/ui/Button";
-import GridOverlay from "@/components/effects/GridOverlay";
 
-const bootLines = [
-  "// INITIALIZING TERMINAL.MY...",
-  "// CONNECTING TO SOLANA MAINNET...",
-  "// LOADING MEMBER DATABASE...",
-  '// STATUS: ONLINE — "Malaysia Boleh"',
-];
+interface HeroSectionProps {
+  animate?: boolean;
+}
 
-export default function HeroSection() {
-  const [bootComplete, setBootComplete] = useState(false);
-  const [visibleLines, setVisibleLines] = useState<number>(0);
+// Animation phases (no loading screen):
+// 0 — Waiting (nothing visible)
+// 1 — Color blocks expand into final layout
+// 2 — Typography slides up, sidebar content fades in
+
+export default function HeroSection({ animate = true }: HeroSectionProps) {
+  const [phase, setPhase] = useState(0);
 
   useEffect(() => {
-    const timers: NodeJS.Timeout[] = [];
-
-    bootLines.forEach((_, i) => {
-      timers.push(
-        setTimeout(() => setVisibleLines(i + 1), 300 + i * 400)
-      );
-    });
-
-    timers.push(setTimeout(() => setBootComplete(true), 300 + bootLines.length * 400 + 300));
-
+    if (!animate) return;
+    const timers = [
+      setTimeout(() => setPhase(1), 100),
+      setTimeout(() => setPhase(2), 900),
+    ];
     return () => timers.forEach(clearTimeout);
-  }, []);
+  }, [animate]);
+
+  const ease = [0.22, 1, 0.36, 1] as const;
 
   return (
-    <section
-      id="hero"
-      className="relative min-h-screen flex items-center overflow-hidden"
-    >
-      {/* Background gradient */}
-      <div
-        className="absolute inset-0 opacity-30"
-        style={{ background: "var(--gradient-hero)" }}
-      />
-      <GridOverlay />
-
-      {/* Noise overlay */}
-      <div className="noise-overlay absolute inset-0" />
-
-      <div className="relative z-10 mx-auto max-w-7xl px-6 py-32 w-full">
-        {/* Boot sequence */}
-        {!bootComplete && (
-          <div className="absolute inset-0 flex items-center justify-center z-20 bg-bg-terminal">
-            <div className="space-y-2 font-mono text-sm">
-              {bootLines.slice(0, visibleLines).map((line, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className={
-                    i === bootLines.length - 1
-                      ? "text-sol-green text-glow"
-                      : "text-text-secondary"
-                  }
-                >
-                  {line}
-                  {i === visibleLines - 1 && (
-                    <span className="cursor-blink ml-1">▊</span>
-                  )}
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Main hero content */}
+    <section id="hero" className="relative h-auto lg:h-screen overflow-hidden bg-bg-terminal">
+      {/* ── Main Hero Layout ── */}
+      <div className="relative h-full flex flex-col lg:flex-row">
+        {/* Left: Sol-green accent panel */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: bootComplete ? 1 : 0 }}
-          transition={{ duration: 0.8 }}
-          className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-center"
+          className="relative flex-1 min-h-[60vh] lg:min-h-0 overflow-hidden"
+          style={{ background: "linear-gradient(135deg, #9945FF 0%, #14F195 100%)" }}
+          initial={{ clipPath: "inset(0 100% 100% 0)" }}
+          animate={phase >= 1 ? { clipPath: "inset(0 0% 0% 0)" } : {}}
+          transition={{ duration: 0.8, ease }}
         >
-          {/* Left — 60% */}
-          <div className="lg:col-span-3 space-y-8">
-            <div className="space-y-2">
-              <motion.div
-                initial={{ y: 30, opacity: 0 }}
-                animate={bootComplete ? { y: 0, opacity: 1 } : {}}
-                transition={{ delay: 0.1, duration: 0.6 }}
-                className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-sol-green/60"
-              >
-                // SUPERTEAM MALAYSIA — TERMINAL // MY
-              </motion.div>
+          {/* Subtle noise texture */}
+          <div className="noise-overlay absolute inset-0 opacity-[0.03]" />
 
+          <div className="relative h-full flex flex-col justify-center px-6 sm:px-10 md:px-14 lg:px-16 xl:px-20 py-24 lg:py-0">
+            {/* SUPER// — masked slide-up */}
+            <div className="overflow-hidden">
               <motion.h1
-                initial={{ y: 40, opacity: 0 }}
-                animate={bootComplete ? { y: 0, opacity: 1 } : {}}
-                transition={{ delay: 0.2, duration: 0.7 }}
-                className="font-display font-black tracking-tight leading-[0.9]"
-                style={{ fontSize: "clamp(3.5rem, 10vw, 8rem)" }}
+                className="font-display font-black leading-[0.85] text-[#0A0A0F]"
+                style={{ fontSize: "clamp(3.5rem, 13vw, 13rem)" }}
+                initial={{ y: "110%" }}
+                animate={phase >= 2 ? { y: "0%" } : {}}
+                transition={{ duration: 0.8, ease }}
               >
-                <span className="bg-gradient-to-r from-sol-purple via-text-primary to-sol-green bg-clip-text text-transparent">
-                  SUPER
-                </span>
-                <br />
-                <span className="bg-gradient-to-r from-sol-green via-text-primary to-sol-purple bg-clip-text text-transparent">
-                  TEAM
-                </span>
+                SUPER<span className="opacity-30">//</span>
               </motion.h1>
-
-              <motion.div
-                initial={{ y: 30, opacity: 0 }}
-                animate={bootComplete ? { y: 0, opacity: 1 } : {}}
-                transition={{ delay: 0.35, duration: 0.6 }}
-                className="flex items-center gap-4"
-              >
-                <div className="h-px w-12 bg-sol-green/40" />
-                <LanguageSwap className="font-display font-black text-4xl md:text-5xl lg:text-6xl" />
-              </motion.div>
             </div>
 
-            <motion.p
-              initial={{ y: 20, opacity: 0 }}
-              animate={bootComplete ? { y: 0, opacity: 1 } : {}}
-              transition={{ delay: 0.5, duration: 0.5 }}
-              className="text-lg text-text-secondary max-w-lg leading-relaxed"
-            >
-              The home for Solana builders in Malaysia. Connecting developers,
-              designers, and founders to shape the future of Web3.
-            </motion.p>
+            {/* TEAM — masked slide-up (staggered) */}
+            <div className="overflow-hidden">
+              <motion.h1
+                className="font-display font-black leading-[0.85] text-[#0A0A0F]"
+                style={{ fontSize: "clamp(3.5rem, 13vw, 13rem)" }}
+                initial={{ y: "110%" }}
+                animate={phase >= 2 ? { y: "0%" } : {}}
+                transition={{ duration: 0.8, delay: 0.1, ease }}
+              >
+                TEAM
+              </motion.h1>
+            </div>
 
+            {/* Subtitle — positioned right of big text on desktop */}
             <motion.div
-              initial={{ y: 20, opacity: 0 }}
-              animate={bootComplete ? { y: 0, opacity: 1 } : {}}
-              transition={{ delay: 0.6, duration: 0.5 }}
-              className="flex flex-wrap gap-4"
+              className="mt-6 max-w-[300px] lg:absolute lg:right-[6%] xl:right-[8%] lg:top-[30%] lg:mt-0 lg:max-w-[240px] xl:max-w-[260px]"
+              initial={{ opacity: 0, y: 20 }}
+              animate={phase >= 2 ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.6, delay: 0.35 }}
             >
-              <Button variant="primary" size="lg">
-                Join Community
-              </Button>
-              <Button variant="outline" size="lg">
-                Explore Opportunities
-              </Button>
+              <p className="font-display text-sm xl:text-base text-[#0A0A0F]/50 leading-relaxed">
+                The Home for Solana Builders in Malaysia. Every Developer, Every Designer, Every Founder.
+              </p>
             </motion.div>
           </div>
-
-          {/* Right — 40% */}
-          <motion.div
-            initial={{ x: 40, opacity: 0 }}
-            animate={bootComplete ? { x: 0, opacity: 1 } : {}}
-            transition={{ delay: 0.4, duration: 0.7 }}
-            className="lg:col-span-2"
-          >
-            <div className="border border-border-dim bg-bg-panel/50 p-6 space-y-6">
-              <div className="flex items-center gap-2 pb-4 border-b border-border-dim">
-                <div className="h-1.5 w-1.5 rounded-full bg-sol-green pulse-glow" />
-                <span className="font-mono text-[0.6rem] uppercase tracking-[0.15em] text-text-secondary">
-                  OPERATIONAL — ALL SYSTEMS NOMINAL
-                </span>
-              </div>
-
-              <SystemStatus />
-
-              <div className="pt-4 border-t border-border-dim">
-                <div className="font-mono text-[0.55rem] text-text-secondary/40 tracking-[0.1em]">
-                  LAST SYNC: {new Date().toISOString().split("T")[0]} // SOLANA EPOCH 784
-                </div>
-              </div>
-            </div>
-          </motion.div>
         </motion.div>
+
+        {/* Right sidebar */}
+        <div className="flex flex-col lg:w-[24%] lg:min-w-[280px] xl:min-w-[320px]">
+          {/* Top: Description panel */}
+          <motion.div
+            className="flex-1 bg-bg-elevated flex items-center p-6 lg:p-8"
+            initial={{ clipPath: "inset(100% 0 0 0)" }}
+            animate={phase >= 1 ? { clipPath: "inset(0 0 0 0)" } : {}}
+            transition={{ duration: 0.7, delay: 0.12, ease }}
+          >
+            <motion.div
+              className="space-y-6 w-full"
+              initial={{ opacity: 0 }}
+              animate={phase >= 2 ? { opacity: 1 } : {}}
+              transition={{ duration: 0.5, delay: 0.4 }}
+            >
+              <p className="font-display text-base xl:text-lg text-text-primary leading-relaxed">
+                Connecting developers, designers, and founders to power the Solana ecosystem in Southeast Asia.
+              </p>
+
+              <div className="flex items-center gap-4">
+                <div className="h-px flex-1 bg-border-dim" />
+                <LanguageSwap className="font-display font-black text-xl xl:text-2xl" />
+                <div className="h-px flex-1 bg-border-dim" />
+              </div>
+            </motion.div>
+          </motion.div>
+
+          {/* Bottom: System Status panel */}
+          <motion.div
+            className="bg-bg-terminal p-6 lg:p-8 border-t border-border-dim"
+            initial={{ clipPath: "inset(0 100% 0 0)" }}
+            animate={phase >= 1 ? { clipPath: "inset(0 0 0 0)" } : {}}
+            transition={{ duration: 0.7, delay: 0.22, ease }}
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={phase >= 2 ? { opacity: 1 } : {}}
+              transition={{ duration: 0.5, delay: 0.5 }}
+            >
+              <h3 className="font-display font-bold text-lg xl:text-xl text-text-primary mb-5">
+                System Status
+              </h3>
+              <SystemStatus />
+            </motion.div>
+          </motion.div>
+        </div>
       </div>
 
       {/* Scroll indicator */}
       <motion.div
         initial={{ opacity: 0 }}
-        animate={bootComplete ? { opacity: 1 } : {}}
-        transition={{ delay: 1.5 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+        animate={phase >= 2 ? { opacity: 1 } : {}}
+        transition={{ delay: 1 }}
+        className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2"
       >
-        <span className="font-mono text-[0.55rem] text-text-secondary tracking-[0.2em]">
+        <span className="font-mono text-[0.5rem] text-text-secondary/50 tracking-[0.2em]">
           SCROLL
         </span>
         <motion.div
           animate={{ y: [0, 6, 0] }}
           transition={{ duration: 1.5, repeat: Infinity }}
-          className="h-6 w-px bg-sol-green/40"
+          className="h-5 w-px bg-sol-green/30"
         />
       </motion.div>
     </section>

@@ -212,20 +212,24 @@ function StatsPanel({ onSwitchToMatrix }: { onSwitchToMatrix: () => void }) {
 
 // ─── 3D Logo Model ───────────────────────────────────────
 
-const LOGO_GLB_PATH = "/models/solana_logo.glb";
+const LOGO_GLB_PATH = "/models/stmy3d_logo.glb";
 
 function LogoModel() {
   const { scene } = useGLTF(LOGO_GLB_PATH);
   const ref = useRef<THREE.Group>(null);
 
-  // Auto-rotate
-  useFrame((_, delta) => {
-    if (ref.current) ref.current.rotation.y += delta * 0.4;
+  // Gentle idle sway — mostly front-facing with subtle Y oscillation
+  useFrame(({ clock }) => {
+    if (ref.current) {
+      const t = clock.getElapsedTime();
+      ref.current.rotation.y = Math.sin(t * 0.3) * 0.15; // ±~8° gentle sway
+    }
   });
 
   return (
     <group ref={ref}>
-      <primitive object={scene} scale={1.5} />
+      {/* Center the model: it sits on Y=0 with center at Y≈0.945 */}
+      <primitive object={scene} position={[0, -0.945, 0]} />
     </group>
   );
 }
@@ -307,13 +311,16 @@ function Logo3DViewer({ compact }: { compact?: boolean }) {
       {/* R3F Canvas */}
       <div className={cn("relative", compact ? "w-40 h-40 md:w-48 md:h-48" : "w-56 h-56 md:w-64 md:h-64")}>
         <Canvas
-          camera={{ position: [0, 0, 4], fov: 45 }}
+          camera={{ position: [0, 0, 2.4], fov: 42 }}
           style={{ background: "transparent" }}
-          gl={{ alpha: true, antialias: true }}
+          gl={{ alpha: true, antialias: true, toneMapping: THREE.NoToneMapping }}
         >
-          <ambientLight intensity={0.3} />
-          <pointLight position={[2, 2, 3]} intensity={1} color="#00FFA3" />
-          <pointLight position={[-2, -1, 2]} intensity={0.4} color="#9945FF" />
+          {/* Strong front lighting to make the white letters bright */}
+          <ambientLight intensity={1.5} />
+          <directionalLight position={[0, 0, 5]} intensity={2} color="#ffffff" />
+          <directionalLight position={[0, 2, 3]} intensity={0.8} color="#ffffff" />
+          <pointLight position={[2, 1, 3]} intensity={0.6} color="#00FFA3" />
+          <pointLight position={[-2, -1, 2]} intensity={0.6} color="#9945FF" />
           <Suspense fallback={null}>
             <LogoModel />
           </Suspense>
