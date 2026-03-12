@@ -14,7 +14,6 @@ import WallOfLove from "@/components/sections/WallOfLove";
 import FAQSection from "@/components/sections/FAQSection";
 import JoinCTA from "@/components/sections/JoinCTA";
 import EventsSection from "@/components/sections/EventsSection";
-import CRTTransition from "@/components/effects/CRTTransition";
 
 export default function Home() {
   const [entered, setEntered] = useState(false);
@@ -23,26 +22,24 @@ export default function Home() {
     <>
       {!entered && <EntryTransition onComplete={() => setEntered(true)} />}
 
-      <CRTTransition active={entered}>
-        <div className={entered ? "opacity-100" : "opacity-0"}>
-          <Navbar />
-          <LeftRail />
+      <div className={entered ? "opacity-100" : "opacity-0"}>
+        <Navbar />
+        <LeftRail />
 
-          <main>
-            <HeroSection />
-            <MissionSection />
-            <StatsSection />
-            <MembersSpotlight />
-            <PartnersSection />
-            <WallOfLove />
-            <FAQSection />
-            <JoinCTA />
-            <EventsSection />
-          </main>
+        <main>
+          <HeroSection />
+          <MissionSection />
+          <StatsSection />
+          <MembersSpotlight />
+          <PartnersSection />
+          <WallOfLove />
+          <FAQSection />
+          <JoinCTA />
+          <EventsSection />
+        </main>
 
-          <Footer />
-        </div>
-      </CRTTransition>
+        <Footer />
+      </div>
     </>
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ScanlineOverlay from "@/components/effects/ScanlineOverlay";
+import CinematicReveal from "./CinematicReveal";
 
 const Room3D = lazy(() => import("./Room3D"));
 
@@ -83,25 +84,17 @@ export default function EntryTransition({ onComplete }: EntryTransitionProps) {
   const [exiting, setExiting] = useState(false);
 
   useEffect(() => {
-    // Detect mobile / low-power: skip 3D for screens under 768px
     const mobile = window.innerWidth < 768;
     setIsMobile(mobile);
   }, []);
 
   const handleEnter = useCallback(() => {
     setExiting(true);
-    setTimeout(onComplete, 800);
-  }, [onComplete]);
+    // Don't call onComplete here — CinematicReveal will call it when done
+  }, []);
 
   if (exiting) {
-    return (
-      <motion.div
-        className="fixed inset-0 z-[100] bg-white"
-        initial={{ opacity: 0.8 }}
-        animate={{ opacity: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-      />
-    );
+    return <CinematicReveal onComplete={onComplete} />;
   }
 
   if (isMobile) {

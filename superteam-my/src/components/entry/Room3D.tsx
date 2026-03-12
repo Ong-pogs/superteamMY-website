@@ -277,6 +277,7 @@ const godRayShader = {
   `,
   fragment: `
     uniform float uTime;
+    uniform float uFlicker;
     uniform vec3 uColor;
     varying vec2 vUv;
     varying vec3 vNormal;
@@ -327,12 +328,12 @@ const godRayShader = {
       float rays = fbm(vec2(vUv.x * 12.0, uTime * 0.015));
       rays = smoothstep(0.25, 0.55, rays);
 
-      // Combine
-      float alpha = depthFade * fresnel * (0.25 + dust * 0.5) * (0.5 + rays * 0.5);
-      alpha *= 0.18;
+      // Combine — softer, more wispy
+      float alpha = depthFade * fresnel * fresnel * dust * (0.3 + rays * 0.7);
+      alpha *= 0.12 * uFlicker;
 
-      // Fade at the tip (near screen) and open end smoothly
-      alpha *= smoothstep(0.0, 0.05, depth) * smoothstep(1.0, 0.85, depth);
+      // Fade at the tip and open end, plus stronger edge softening
+      alpha *= smoothstep(0.0, 0.1, depth) * smoothstep(1.0, 0.7, depth);
 
       gl_FragColor = vec4(uColor, alpha);
     }
@@ -350,6 +351,7 @@ function ScreenGodRays() {
 
   const uniforms = useMemo(() => ({
     uTime: { value: 0 },
+    uFlicker: { value: 1.0 },
     uColor: { value: new THREE.Color("#80ffb0") },
   }), []);
 
@@ -357,7 +359,7 @@ function ScreenGodRays() {
   // Screen face is at local Z≈0.21. Narrow end at screen, wide end projects outward.
   return (
     <mesh position={[0, 0.03, 1.71]} rotation={[Math.PI / 2, 0, 0]}>
-      <cylinderGeometry args={[1.0, 0.12, 3.0, 32, 1, true]} />
+      <cylinderGeometry args={[0.8, 0.1, 3.0, 32, 8, true]} />
       <shaderMaterial
         ref={matRef}
         vertexShader={godRayShader.vertex}
@@ -678,9 +680,9 @@ const smokeFragmentShader = `
     float smoke2 = fbm(uv * 3.5 + vec2(-uTime * 0.03, uTime * 0.01));
     float smoke = smoke1 * 0.6 + smoke2 * 0.4;
 
-    // Fade at edges
-    float edgeFade = smoothstep(0.0, 0.3, uv.x) * smoothstep(1.0, 0.7, uv.x)
-                   * smoothstep(0.0, 0.3, uv.y) * smoothstep(1.0, 0.7, uv.y);
+    // Radial fade from center — no rectangular edges
+    float dist = length(uv - 0.5) * 2.0;
+    float edgeFade = 1.0 - smoothstep(0.3, 1.0, dist);
 
     // Wispy threshold — only show denser patches
     smoke = smoothstep(0.35, 0.65, smoke);
@@ -708,7 +710,7 @@ function AmbientSmoke({ pcPos }: { pcPos: [number, number, number] }) {
     <group>
       {/* Floor-level fog */}
       <mesh position={[pcPos[0], 0.15, pcPos[2] + 1]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[10, 10]} />
+        <planeGeometry args={[16, 16]} />
         <shaderMaterial
           ref={matRef}
           vertexShader={smokeVertexShader}
@@ -723,7 +725,7 @@ function AmbientSmoke({ pcPos }: { pcPos: [number, number, number] }) {
 
       {/* Mid-height haze */}
       <mesh position={[pcPos[0] + 0.3, 1.0, pcPos[2] + 0.5]} rotation={[0.2, 0.3, 0]}>
-        <planeGeometry args={[6, 5]} />
+        <planeGeometry args={[12, 10]} />
         <shaderMaterial
           vertexShader={smokeVertexShader}
           fragmentShader={smokeFragmentShader}
@@ -737,7 +739,7 @@ function AmbientSmoke({ pcPos }: { pcPos: [number, number, number] }) {
 
       {/* High haze */}
       <mesh position={[pcPos[0] - 0.5, 2.0, pcPos[2] + 2]} rotation={[0.4, -0.2, 0.1]}>
-        <planeGeometry args={[8, 6]} />
+        <planeGeometry args={[14, 10]} />
         <shaderMaterial
           vertexShader={smokeVertexShader}
           fragmentShader={smokeFragmentShader}
@@ -836,6 +838,7 @@ function ScreenTerminal({ phase, onInstall }: { phase: Phase; onInstall: () => v
   const [installing, setInstalling] = useState(false);
   const [installLines, setInstallLines] = useState<string[]>([]);
   const [bootStarted, setBootStarted] = useState(false);
+  const [loadingPercent, setLoadingPercent] = useState(-1); // -1 = not started
 
   const bootLines = useMemo(() => [
     "SUPERTEAM_MY TERMINAL v1.0",
@@ -893,13 +896,29 @@ function ScreenTerminal({ phase, onInstall }: { phase: Phase; onInstall: () => v
     const timer = setInterval(() => {
       if (idx >= deps.length) {
         clearInterval(timer);
-        setTimeout(onInstall, 500);
+        // Start loading % on screen
+        setTimeout(() => setLoadingPercent(0), 400);
         return;
       }
       setInstallLines((prev) => [...prev, deps[idx]!]);
       idx++;
     }, 130);
-  }, [installing, onInstall]);
+  }, [installing]);
+
+  // Loading % counter on CRT screen
+  useEffect(() => {
+    if (loadingPercent < 0) return;
+    if (loadingPercent >= 100) {
+      setTimeout(onInstall, 600);
+      return;
+    }
+    const timer = setTimeout(() => {
+      // Ease-in acceleration: starts slow, speeds up
+      const step = loadingPercent < 30 ? 2 : loadingPercent < 70 ? 3 : 5;
+      setLoadingPercent((p) => Math.min(p + step, 100));
+    }, 40);
+    return () => clearTimeout(timer);
+  }, [loadingPercent, onInstall]);
 
   const lineClass = (l: string) => {
     if (l === "") return "h-[10px]";
@@ -935,7 +954,7 @@ function ScreenTerminal({ phase, onInstall }: { phase: Phase; onInstall: () => v
             height="100%"
             preserveAspectRatio="none"
           />
-          <feDisplacementMap in="SourceGraphic" in2="map" scale="35" xChannelSelector="R" yChannelSelector="G" />
+          <feDisplacementMap in="SourceGraphic" in2="map" scale="28" xChannelSelector="R" yChannelSelector="G" />
         </filter>
       </defs>
     </svg>
@@ -963,7 +982,7 @@ function ScreenTerminal({ phase, onInstall }: { phase: Phase; onInstall: () => v
       {/* CRT scanlines */}
       <div style={{
         position: "absolute", inset: 0, zIndex: 10, pointerEvents: "none" as const,
-        background: "repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)",
+        background: "repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0,0,0,0.13) 2px, rgba(0,0,0,0.13) 4px)",
         borderRadius: 14,
       }} />
 
@@ -978,7 +997,7 @@ function ScreenTerminal({ phase, onInstall }: { phase: Phase; onInstall: () => v
       <div style={{
         position: "absolute", inset: 0, zIndex: 11, pointerEvents: "none" as const,
         boxShadow:
-          "inset 0 0 150px 60px rgba(0,0,0,0.55), inset 0 0 50px 15px rgba(0,0,0,0.35)",
+          "inset 0 0 120px 45px rgba(0,0,0,0.45), inset 0 0 40px 12px rgba(0,0,0,0.25)",
         borderRadius: 14,
       }} />
 
@@ -1054,8 +1073,56 @@ function ScreenTerminal({ phase, onInstall }: { phase: Phase; onInstall: () => v
           {!showButton && !installing && lines.length < bootLines.length && (
             <span style={{ animation: "cursor-blink 1s step-end infinite" }}>_</span>
           )}
-          {installing && installLines.length < 10 && (
+          {installing && loadingPercent < 0 && installLines.length < 10 && (
             <span style={{ animation: "cursor-blink 1s step-end infinite" }}>_</span>
+          )}
+
+          {/* Loading % on CRT screen */}
+          {loadingPercent >= 0 && (
+            <div style={{
+              marginTop: 30,
+              display: "flex",
+              flexDirection: "column" as const,
+              alignItems: "center",
+              justifyContent: "center",
+              flex: 1,
+              gap: 8,
+            }}>
+              {/* Progress bar */}
+              <div style={{
+                width: "60%",
+                height: 3,
+                background: "rgba(0,255,163,0.1)",
+                borderRadius: 2,
+                overflow: "hidden",
+              }}>
+                <div style={{
+                  width: `${loadingPercent}%`,
+                  height: "100%",
+                  background: "#00ffa3",
+                  boxShadow: "0 0 8px rgba(0,255,163,0.5)",
+                  transition: "width 0.04s",
+                }} />
+              </div>
+              {/* Percentage */}
+              <span style={{
+                fontSize: 28,
+                fontWeight: "bold",
+                letterSpacing: "0.15em",
+                color: "#00ffa3",
+                textShadow: "0 0 15px rgba(0,255,163,0.4)",
+              }}>
+                {loadingPercent}%
+              </span>
+              <span style={{
+                fontSize: 8,
+                letterSpacing: "0.3em",
+                opacity: 0.3,
+                textTransform: "uppercase" as const,
+              }}>
+                {loadingPercent < 100 ? "LOADING TERMINAL" : "READY"}
+              </span>
+            </div>
           )}
         </div>
 

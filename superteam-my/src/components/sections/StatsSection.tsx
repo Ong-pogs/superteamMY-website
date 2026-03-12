@@ -1,264 +1,259 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useRef } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { cn } from "@/lib/utils";
 import SectionLabel from "@/components/ui/SectionLabel";
 import Counter from "@/components/ui/Counter";
-import TopographyBG from "@/components/effects/TopographyBG";
 import Crosshair from "@/components/effects/Crosshair";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+
+// ─── Data ────────────────────────────────────────────────
 
 const stats = [
-  {
-    label: "Community Members",
-    end: 500,
-    suffix: "+",
-    barWidth: "92%",
-    color: "sol-green",
-  },
-  {
-    label: "Events Hosted",
-    end: 25,
-    suffix: "",
-    barWidth: "45%",
-    color: "sol-purple",
-  },
-  {
-    label: "Projects Supported",
-    end: 80,
-    suffix: "",
-    barWidth: "65%",
-    color: "sol-blue",
-  },
-  {
-    label: "Bounties Completed",
-    end: 150,
-    suffix: "",
-    barWidth: "78%",
-    color: "gold-accent",
-  },
-  {
-    label: "Community Reach",
-    end: 10,
-    suffix: "K+",
-    barWidth: "88%",
-    color: "sol-green",
-  },
+  { label: "Community Members", value: 500, suffix: "+", tag: "MMBR", color: "green" as const },
+  { label: "Events Hosted", value: 25, suffix: "", tag: "EVNT", color: "purple" as const },
+  { label: "Projects Built", value: 80, suffix: "", tag: "PROJ", color: "blue" as const },
+  { label: "Bounties Completed", value: 150, suffix: "", tag: "BNTY", color: "gold" as const },
+  { label: "Community Reach", value: 10, suffix: "K+", tag: "RECH", color: "green" as const },
 ];
 
-const barColorMap: Record<string, string> = {
-  "sol-green": "bg-sol-green",
-  "sol-purple": "bg-sol-purple",
-  "sol-blue": "bg-sol-blue",
-  "gold-accent": "bg-gold-accent",
+type StatColor = (typeof stats)[number]["color"];
+
+const colors: Record<StatColor, { text: string; bg: string; border: string; glow: string }> = {
+  green:  { text: "text-sol-green",   bg: "bg-sol-green",   border: "border-sol-green/30",   glow: "hover:shadow-[0_0_20px_rgba(0,255,163,0.12)]" },
+  purple: { text: "text-sol-purple",  bg: "bg-sol-purple",  border: "border-sol-purple/30",  glow: "hover:shadow-[0_0_20px_rgba(153,69,255,0.12)]" },
+  blue:   { text: "text-sol-blue",    bg: "bg-sol-blue",    border: "border-sol-blue/30",    glow: "hover:shadow-[0_0_20px_rgba(20,241,149,0.12)]" },
+  gold:   { text: "text-gold-accent", bg: "bg-gold-accent", border: "border-gold-accent/30", glow: "hover:shadow-[0_0_20px_rgba(255,184,0,0.12)]" },
 };
 
-const textColorMap: Record<string, string> = {
-  "sol-green": "text-sol-green",
-  "sol-purple": "text-sol-purple",
-  "sol-blue": "text-sol-blue",
-  "gold-accent": "text-gold-accent",
-};
+// ─── Stat Card ───────────────────────────────────────────
 
-// Orbital data point labels
-const orbitalPoints = [
-  { label: "DeFi", angle: 0 },
-  { label: "NFT", angle: 60 },
-  { label: "DePIN", angle: 120 },
-  { label: "Gaming", angle: 180 },
-  { label: "DAO", angle: 240 },
-  { label: "Infra", angle: 300 },
-];
+function StatCard({ stat, index }: { stat: (typeof stats)[0]; index: number }) {
+  const c = colors[stat.color];
 
-function StatCard({
-  stat,
-  index,
-}: {
-  stat: (typeof stats)[0];
-  index: number;
-}) {
   return (
     <motion.div
-      initial={{ opacity: 0, x: -30 }}
-      whileInView={{ opacity: 1, x: 0 }}
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
       viewport={{ once: true, margin: "-50px" }}
-      className="relative border border-border-dim bg-bg-panel/60 p-5 group hover:border-border-active transition-colors duration-300"
+      className={cn(
+        "relative border bg-bg-panel/80 backdrop-blur-sm p-5 md:p-6",
+        "transition-all duration-300 hover:border-border-active",
+        c.border, c.glow,
+      )}
     >
       <Crosshair position="top-left" />
+      <Crosshair position="bottom-right" />
 
-      {/* Label */}
-      <div className="flex items-center justify-between mb-3">
-        <span className="font-mono text-[0.65rem] tracking-[0.12em] text-text-secondary uppercase">
-          {stat.label}
-        </span>
-        <span className="font-mono text-[0.55rem] text-text-secondary/40">
+      {/* Tag + index */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className={cn("h-1.5 w-1.5 rounded-full", c.bg)} />
+          <span className={cn("font-mono text-[0.6rem] font-medium tracking-[0.2em]", c.text)}>
+            {stat.tag}
+          </span>
+        </div>
+        <span className="font-mono text-[0.5rem] text-text-secondary/30">
           [{String(index + 1).padStart(2, "0")}]
         </span>
       </div>
 
-      {/* Counter */}
+      {/* Big counter */}
       <Counter
-        end={stat.end}
+        end={stat.value}
         suffix={stat.suffix}
-        className={cn(
-          "font-display font-black text-3xl tracking-tight",
-          textColorMap[stat.color]
-        )}
+        className={cn("font-display font-black text-4xl md:text-5xl tracking-tight", c.text)}
       />
 
-      {/* Progress bar */}
-      <div className="mt-4 h-1 w-full bg-bg-elevated rounded-full overflow-hidden">
+      {/* Label */}
+      <div className="mt-3 font-mono text-[0.65rem] tracking-[0.08em] text-text-secondary uppercase">
+        {stat.label}
+      </div>
+
+      {/* Bottom accent line */}
+      <div className="absolute bottom-0 left-0 right-0 h-[2px] overflow-hidden">
         <motion.div
-          initial={{ width: 0 }}
-          whileInView={{ width: stat.barWidth }}
-          transition={{ duration: 1.2, delay: 0.3 + index * 0.1, ease: "easeOut" }}
+          initial={{ width: "0%" }}
+          whileInView={{ width: "100%" }}
+          transition={{ duration: 1.2, delay: 0.3 + index * 0.15, ease: "easeOut" as const }}
           viewport={{ once: true }}
-          className={cn("h-full rounded-full", barColorMap[stat.color])}
+          className={cn("h-full", c.bg)}
+          style={{ opacity: 0.6 }}
         />
       </div>
     </motion.div>
   );
 }
 
-function CircularDisplay() {
+// ─── Grid Surface Background ─────────────────────────────
+
+function GridSurface() {
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      whileInView={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.8 }}
-      viewport={{ once: true }}
-      className="relative flex items-center justify-center aspect-square max-w-[400px] mx-auto"
-    >
-      {/* Outer rotating dashed ring */}
+    <div className="absolute inset-0 -m-6 overflow-hidden pointer-events-none">
+      {/* Main grid */}
       <div
-        className="absolute inset-0 rounded-full border-2 border-dashed border-sol-green/20 animate-[spin_30s_linear_infinite]"
+        className="absolute inset-0 opacity-25"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(0,255,163,0.08) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,255,163,0.08) 1px, transparent 1px)
+          `,
+          backgroundSize: "60px 60px",
+        }}
       />
 
-      {/* Second ring */}
+      {/* Fine sub-grid */}
       <div
-        className="absolute inset-6 rounded-full border border-dashed border-sol-purple/15 animate-[spin_45s_linear_infinite_reverse]"
+        className="absolute inset-0 opacity-15"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(0,255,163,0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,255,163,0.04) 1px, transparent 1px)
+          `,
+          backgroundSize: "15px 15px",
+        }}
       />
 
-      {/* Inner static ring */}
-      <div className="absolute inset-12 rounded-full border border-border-dim" />
+      {/* Center radial glow */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(0,255,163,0.04) 0%, transparent 70%)",
+        }}
+      />
 
-      {/* Center glow */}
-      <div className="absolute inset-16 rounded-full bg-gradient-to-br from-sol-green/5 to-sol-purple/5" />
-
-      {/* Center content */}
-      <div className="relative z-10 text-center">
-        <div className="font-mono text-[0.55rem] tracking-[0.2em] text-text-secondary/50 uppercase mb-1">
-          // Hub Status
-        </div>
-        <div className="font-display font-black text-xl tracking-tight text-text-primary">
-          SUPERTEAM
-        </div>
-        <div className="font-display font-black text-2xl tracking-tight text-sol-green text-glow">
-          MY
-        </div>
-        <div className="mt-2 flex items-center justify-center gap-1.5">
-          <div className="h-1.5 w-1.5 rounded-full bg-sol-green pulse-glow" />
-          <span className="font-mono text-[0.5rem] tracking-[0.15em] text-sol-green/70 uppercase">
-            Online
-          </span>
-        </div>
-      </div>
-
-      {/* Orbital data points */}
-      {orbitalPoints.map((point, i) => {
-        const radius = 170;
-        const angleRad = (point.angle * Math.PI) / 180;
-        const x = Math.cos(angleRad) * radius;
-        const y = Math.sin(angleRad) * radius;
-
-        return (
-          <motion.div
-            key={point.label}
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            transition={{ duration: 0.4, delay: 0.5 + i * 0.1 }}
-            viewport={{ once: true }}
-            className="absolute"
-            style={{
-              left: `calc(50% + ${x}px)`,
-              top: `calc(50% + ${y}px)`,
-              transform: "translate(-50%, -50%)",
-            }}
-          >
-            <div className="flex flex-col items-center gap-1">
-              <div className="h-2 w-2 rounded-full bg-sol-green/40 border border-sol-green/60" />
-              <span className="font-mono text-[0.5rem] tracking-[0.1em] text-text-secondary/60 uppercase whitespace-nowrap">
-                {point.label}
-              </span>
-            </div>
-          </motion.div>
-        );
-      })}
-
-    </motion.div>
+      {/* Fade edges so grid doesn't have hard cuts */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: `
+            linear-gradient(180deg, rgba(10,10,15,1) 0%, transparent 15%, transparent 85%, rgba(10,10,15,1) 100%),
+            linear-gradient(90deg, rgba(10,10,15,1) 0%, transparent 10%, transparent 90%, rgba(10,10,15,1) 100%)
+          `,
+        }}
+      />
+    </div>
   );
 }
 
+// ─── Decorative coordinate markers ───────────────────────
+
+function CoordMarkers() {
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      {/* Top-left coordinate */}
+      <div className="absolute top-0 left-0 font-mono text-[0.45rem] text-sol-green/15 tracking-[0.1em]">
+        X:0.00 Y:0.00
+      </div>
+      {/* Top-right */}
+      <div className="absolute top-0 right-0 font-mono text-[0.45rem] text-sol-green/15 tracking-[0.1em]">
+        X:1.00 Y:0.00
+      </div>
+      {/* Bottom-left */}
+      <div className="absolute bottom-0 left-0 font-mono text-[0.45rem] text-sol-green/15 tracking-[0.1em]">
+        X:0.00 Y:1.00
+      </div>
+      {/* Bottom-right */}
+      <div className="absolute bottom-0 right-0 font-mono text-[0.45rem] text-sol-green/15 tracking-[0.1em]">
+        X:1.00 Y:1.00
+      </div>
+
+      {/* Dashed horizontal center line */}
+      <div className="absolute top-1/2 left-0 right-0 border-t border-dashed border-sol-green/8" />
+      {/* Dashed vertical center line */}
+      <div className="absolute top-0 bottom-0 left-1/2 border-l border-dashed border-sol-green/8" />
+    </div>
+  );
+}
+
+// ─── Main Section ────────────────────────────────────────
+
 export default function StatsSection() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const isMobile = useMediaQuery("(max-width: 768px)");
+
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start end", "end start"],
+  });
+
+  // Tilt: flat → 40deg as you scroll through
+  const rotateX = useTransform(scrollYProgress, [0.15, 0.6], [0, 40]);
+  // Slight scale-down to enhance depth
+  const scale = useTransform(scrollYProgress, [0.15, 0.6], [1, 0.92]);
+  // Fade the surface slightly as it tilts away
+  const surfaceOpacity = useTransform(scrollYProgress, [0.15, 0.7], [1, 0.7]);
+
   return (
     <section
+      ref={sectionRef}
       id="stats"
-      className="relative py-24 md:py-32 overflow-hidden"
+      className="relative py-24 md:py-36 overflow-hidden"
     >
-      <TopographyBG />
-
       <div className="relative z-10 mx-auto max-w-7xl px-6">
-        {/* Section label */}
+        {/* Section header — stays flat, outside perspective */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           viewport={{ once: true }}
-          className="mb-16"
+          className="mb-14"
         >
-          <SectionLabel number="03" label="Network Metrics" />
+          <SectionLabel number="03" label="Impact Matrix" />
+          <h2 className="mt-4 font-display font-black text-3xl md:text-4xl tracking-tight">
+            <span className="text-text-primary">Network </span>
+            <span className="text-sol-green text-glow">Metrics</span>
+          </h2>
+          <p className="mt-2 font-mono text-[0.65rem] text-text-secondary/50 tracking-[0.1em]">
+            // REAL-TIME COMMUNITY DATA — LAST SYNC: {new Date().toISOString().split("T")[0]}
+          </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          {/* Left: stat cards */}
-          <div className="space-y-4">
-            {/* Header */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              viewport={{ once: true }}
-              className="mb-6"
-            >
-              <h2 className="font-display font-black text-3xl md:text-4xl tracking-tight leading-tight mb-2">
-                <span className="text-text-primary">Endfield </span>
-                <span className="text-sol-purple text-glow-purple">Hub</span>
-              </h2>
-              <p className="font-mono text-xs text-text-secondary/60 tracking-wide">
-                Real-time community metrics // Last updated: {new Date().toISOString().split("T")[0]}
-              </p>
-            </motion.div>
+        {/* Perspective container */}
+        <div style={{ perspective: isMobile ? "none" : "1200px" }}>
+          {/* Tilting surface */}
+          <motion.div
+            style={{
+              rotateX: isMobile ? 0 : rotateX,
+              scale: isMobile ? 1 : scale,
+              opacity: isMobile ? 1 : surfaceOpacity,
+              transformOrigin: "center bottom",
+              transformStyle: "preserve-3d" as const,
+            }}
+          >
+            {/* Surface decorations */}
+            <div className="relative p-6">
+              <GridSurface />
+              <CoordMarkers />
 
-            {stats.map((stat, i) => (
-              <StatCard key={stat.label} stat={stat} index={i} />
-            ))}
+              {/* Row 1: 3 stat cards */}
+              <div className="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+                {stats.slice(0, 3).map((stat, i) => (
+                  <StatCard key={stat.tag} stat={stat} index={i} />
+                ))}
+              </div>
 
-            {/* Footer terminal line */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.8 }}
-              viewport={{ once: true }}
-              className="pt-2 font-mono text-[0.55rem] text-text-secondary/30 tracking-[0.1em]"
-            >
-              {">"} all metrics sourced from on-chain + community data
-            </motion.div>
-          </div>
+              {/* Row 2: 2 stat cards, centered */}
+              <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 mt-4 md:mt-5 mx-auto max-w-[calc(66.666%+0.625rem)] lg:max-w-[calc(66.666%+0.625rem)]">
+                {stats.slice(3).map((stat, i) => (
+                  <StatCard key={stat.tag} stat={stat} index={i + 3} />
+                ))}
+              </div>
 
-          {/* Right: circular display */}
-          <div className="hidden lg:block">
-            <CircularDisplay />
-          </div>
+              {/* Terminal footer */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.8 }}
+                viewport={{ once: true }}
+                className="mt-8 font-mono text-[0.55rem] text-text-secondary/25 tracking-[0.1em] text-center"
+              >
+                {">"} all metrics sourced from on-chain + community data // updated every epoch
+              </motion.div>
+            </div>
+          </motion.div>
         </div>
       </div>
     </section>
