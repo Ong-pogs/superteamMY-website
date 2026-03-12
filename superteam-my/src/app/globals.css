@@ -237,6 +237,12 @@ body {
   to { opacity: 0; }
 }
 
+/* Fade in (used by 3D→cinematic handoff) */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .noise-overlay::before {
   content: '';
   position: absolute;

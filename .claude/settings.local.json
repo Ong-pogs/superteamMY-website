@@ -35,7 +35,11 @@
       "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && npx next build 2>&1 | grep -i \"error\\\\|failed\" | head -5)",
       "Bash(mkdir -p \"/c/Users/ongee/Downloads/3dcomputertowebsite_1\" && cd \"/c/Users/ongee/Downloads\" && unzip -o \"3dcomputertowebsite_1.zip\" -d \"3dcomputertowebsite_1\" 2>&1 | tail -20)",
       "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && npx next build 2>&1 | grep -iE \"error|failed|warning\" | head -10)",
-      "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && npx next build 2>&1 | grep -iE \"error|failed\" | head -10)"
+      "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && npx next build 2>&1 | grep -iE \"error|failed\" | head -10)",
+      "Bash(mkdir -p \"/c/Users/ongee/Downloads/3dcomptoscreen4\" && cd \"/c/Users/ongee/Downloads\" && unzip -o \"3dcomptoscreen4.zip\" -d \"3dcomptoscreen4\" 2>&1 | tail -5)",
+      "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && cmd /c \"npm run dev\" 2>&1)",
+      "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && npx next dev 2>&1)",
+      "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && npx next build 2>&1 | tail -10)"
     ]
   }
 }

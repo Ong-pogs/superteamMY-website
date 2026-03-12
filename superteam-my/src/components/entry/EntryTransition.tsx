@@ -93,10 +93,6 @@ export default function EntryTransition({ onComplete }: EntryTransitionProps) {
     // Don't call onComplete here — CinematicReveal will call it when done
   }, []);
 
-  if (exiting) {
-    return <CinematicReveal onComplete={onComplete} />;
-  }
-
   if (isMobile) {
     return (
       <AnimatePresence>
@@ -106,8 +102,11 @@ export default function EntryTransition({ onComplete }: EntryTransitionProps) {
   }
 
   return (
-    <Suspense fallback={<LoadingScreen />}>
-      <Room3D onEnter={handleEnter} />
-    </Suspense>
+    <>
+      <Suspense fallback={<LoadingScreen />}>
+        <Room3D onEnter={handleEnter} />
+      </Suspense>
+      {exiting && <CinematicReveal onComplete={onComplete} />}
+    </>
   );
 }

@@ -3,7 +3,7 @@
 import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
-import { Leva, useControls, folder } from "leva";
+import { Leva, useControls } from "leva";
 import * as THREE from "three";
 
 // ─── Types ────────────────────────────────────────────────
@@ -131,14 +131,10 @@ function Monitor({
   materials,
   hovered,
   tilt,
-  phase,
-  onInstall,
 }: {
   materials: ReturnType<typeof useMaterials>;
   hovered: boolean;
   tilt: number;
-  phase: Phase;
-  onInstall: () => void;
 }) {
   const screenRef = useRef<THREE.Mesh>(null!);
 
@@ -232,14 +228,14 @@ function Monitor({
       <mesh position={[0, -0.25, 0.02]} material={materials.darkBeige}>
         <boxGeometry args={[0.3, 0.015, 0.22]} />
       </mesh>
-      {/* Interactive screen — always visible in 3D space */}
+      {/* CRT screen content — always visible in 3D space */}
       <group position={[0, 0.03, 0.209]}>
         <Html
           transform
           scale={0.025}
-          style={{ pointerEvents: phase === "atScreen" ? "auto" : "none" }}
+          style={{ pointerEvents: "none" }}
         >
-          <ScreenTerminal phase={phase} onInstall={onInstall} />
+          <ScreenTerminal />
         </Html>
       </group>
 
@@ -576,13 +572,13 @@ function ClickZone({
 }) {
   return (
     <mesh
-      position={[0, 0.3, 0.2]}
+      position={[0, 0.25, 0]}
       visible={false}
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       onPointerOver={(e) => { e.stopPropagation(); onHover(true); document.body.style.cursor = "pointer"; }}
       onPointerOut={() => { onHover(false); document.body.style.cursor = "default"; }}
     >
-      <boxGeometry args={[1.5, 1.2, 1.2]} />
+      <boxGeometry args={[0.8, 0.9, 0.7]} />
       <meshBasicMaterial />
     </mesh>
   );
@@ -832,106 +828,9 @@ function CameraIdle({ active, cfg }: { active: boolean; cfg: SceneConfig }) {
 
 // ─── Screen terminal (rendered IN 3D via Html) ──────────
 
-function ScreenTerminal({ phase, onInstall }: { phase: Phase; onInstall: () => void }) {
-  const [lines, setLines] = useState<string[]>([]);
-  const [showButton, setShowButton] = useState(false);
-  const [installing, setInstalling] = useState(false);
-  const [installLines, setInstallLines] = useState<string[]>([]);
-  const [bootStarted, setBootStarted] = useState(false);
-  const [loadingPercent, setLoadingPercent] = useState(-1); // -1 = not started
-
-  const bootLines = useMemo(() => [
-    "SUPERTEAM_MY TERMINAL v1.0",
-    "Copyright (c) 2026 Superteam Malaysia",
-    "",
-    "Checking system integrity......... OK",
-    "Loading Solana runtime............ OK",
-    "Connecting to devnet.............. OK",
-    "Validator status.................. ACTIVE",
-    "",
-    "> Ready.",
-  ], []);
-
-  // Start boot sequence when zoomed in
-  useEffect(() => {
-    if (phase === "atScreen" && !bootStarted) {
-      setBootStarted(true);
-    }
-  }, [phase, bootStarted]);
-
-  useEffect(() => {
-    if (!bootStarted) return;
-    let idx = 0;
-    const timer = setInterval(() => {
-      if (idx >= bootLines.length) {
-        clearInterval(timer);
-        setShowButton(true);
-        return;
-      }
-      setLines((prev) => [...prev, bootLines[idx]!]);
-      idx++;
-    }, 180);
-    return () => clearInterval(timer);
-  }, [bootStarted, bootLines]);
-
-  const handleInstall = useCallback(() => {
-    if (installing) return;
-    setInstalling(true);
-    setShowButton(false);
-
-    const deps = [
-      "> npm install superteam-my",
-      "",
-      "resolving packages...",
-      "added 247 packages in 3.2s",
-      "",
-      "  + @solana/web3.js@1.98.0",
-      "  + @superteam/core@2.1.0",
-      "  + terminal-ui@1.0.0",
-      "",
-      "> Initializing terminal...",
-    ];
-
-    let idx = 0;
-    const timer = setInterval(() => {
-      if (idx >= deps.length) {
-        clearInterval(timer);
-        // Start loading % on screen
-        setTimeout(() => setLoadingPercent(0), 400);
-        return;
-      }
-      setInstallLines((prev) => [...prev, deps[idx]!]);
-      idx++;
-    }, 130);
-  }, [installing]);
-
-  // Loading % counter on CRT screen
-  useEffect(() => {
-    if (loadingPercent < 0) return;
-    if (loadingPercent >= 100) {
-      setTimeout(onInstall, 600);
-      return;
-    }
-    const timer = setTimeout(() => {
-      // Ease-in acceleration: starts slow, speeds up
-      const step = loadingPercent < 30 ? 2 : loadingPercent < 70 ? 3 : 5;
-      setLoadingPercent((p) => Math.min(p + step, 100));
-    }, 40);
-    return () => clearTimeout(timer);
-  }, [loadingPercent, onInstall]);
-
-  const lineClass = (l: string) => {
-    if (l === "") return "h-[10px]";
-    if (l.startsWith(">")) return "font-bold";
-    if (l.includes("OK") || l.includes("ACTIVE")) return "opacity-80";
-    if (l.startsWith("  +")) return "opacity-90";
-    return "opacity-50";
-  };
-
+function ScreenTerminal() {
   return (
-    // Black mask + barrel distortion container
     <div
-      onPointerDown={(e) => e.stopPropagation()}
       style={{
         width: 760,
         height: 600,
@@ -942,11 +841,10 @@ function ScreenTerminal({ phase, onInstall }: { phase: Phase; onInstall: () => v
         borderRadius: 4,
       }}
     >
-    {/* SVG filter for real barrel distortion */}
+    {/* SVG filter for barrel distortion */}
     <svg style={{ position: "absolute", width: 0, height: 0 }}>
       <defs>
         <filter id="crt-barrel">
-          {/* Barrel distortion via displacement map + spherize effect */}
           <feImage
             href={"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cdefs%3E%3CradialGradient id='g'%3E%3Cstop offset='0%25' stop-color='%23808080'/%3E%3Cstop offset='100%25' stop-color='%23404040'/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect fill='url(%23g)' width='200' height='200'/%3E%3C/svg%3E"}
             result="map"
@@ -968,14 +866,12 @@ function ScreenTerminal({ phase, onInstall }: { phase: Phase; onInstall: () => v
         fontSize: 13,
         lineHeight: 1.7,
         color: "#00ff88",
-        padding: "32px 38px",
         position: "relative",
         overflow: "hidden",
         borderRadius: "14px",
         display: "flex",
         flexDirection: "column" as const,
         userSelect: "none" as const,
-        // Apply barrel distortion filter
         filter: "url(#crt-barrel)",
       }}
     >
@@ -1017,12 +913,12 @@ function ScreenTerminal({ phase, onInstall }: { phase: Phase; onInstall: () => v
         borderRadius: 14,
       }} />
 
-      {/* ── Content ── */}
+      {/* ── Content: static branding ── */}
       <div style={{ position: "relative", zIndex: 5, flex: 1, display: "flex", flexDirection: "column" as const }}>
-        {/* Header */}
+        {/* Header bar */}
         <div style={{
           display: "flex", alignItems: "center", gap: 10,
-          marginBottom: 14, paddingBottom: 10,
+          margin: "32px 38px 14px", paddingBottom: 10,
           borderBottom: "1px solid rgba(0,255,163,0.12)",
         }}>
           <div style={{
@@ -1040,131 +936,14 @@ function ScreenTerminal({ phase, onInstall }: { phase: Phase; onInstall: () => v
           </span>
         </div>
 
-        {/* Screen content */}
-        <div style={{ flex: 1, overflow: "hidden" }}>
-          {/* Idle state — before boot */}
-          {!bootStarted && (
-            <div style={{ height: "100%", display: "flex", flexDirection: "column" as const, justifyContent: "center", alignItems: "center", gap: 12 }}>
-              <div style={{ fontSize: 16, letterSpacing: "0.2em", fontWeight: "bold" }}>SUPERTEAM // MY</div>
-              <div style={{ fontSize: 10, opacity: 0.4, letterSpacing: "0.15em" }}>SOLANA TERMINAL v1.0</div>
-              <div style={{ marginTop: 16, fontSize: 11, opacity: 0.3, animation: "cursor-blink 1.2s step-end infinite" }}>
-                Click to initialize...
-              </div>
-            </div>
-          )}
-
-          {/* Boot lines */}
-          {lines.map((line, i) => {
-            const l = line ?? "";
-            return <div key={i} className={lineClass(l)}>{l}</div>;
-          })}
-
-          {/* Install output */}
-          {installLines.length > 0 && (
-            <div style={{ marginTop: 10 }}>
-              {installLines.map((line, i) => {
-                const l = line ?? "";
-                return <div key={i} className={lineClass(l)}>{l}</div>;
-              })}
-            </div>
-          )}
-
-          {/* Cursor */}
-          {!showButton && !installing && lines.length < bootLines.length && (
-            <span style={{ animation: "cursor-blink 1s step-end infinite" }}>_</span>
-          )}
-          {installing && loadingPercent < 0 && installLines.length < 10 && (
-            <span style={{ animation: "cursor-blink 1s step-end infinite" }}>_</span>
-          )}
-
-          {/* Loading % on CRT screen */}
-          {loadingPercent >= 0 && (
-            <div style={{
-              marginTop: 30,
-              display: "flex",
-              flexDirection: "column" as const,
-              alignItems: "center",
-              justifyContent: "center",
-              flex: 1,
-              gap: 8,
-            }}>
-              {/* Progress bar */}
-              <div style={{
-                width: "60%",
-                height: 3,
-                background: "rgba(0,255,163,0.1)",
-                borderRadius: 2,
-                overflow: "hidden",
-              }}>
-                <div style={{
-                  width: `${loadingPercent}%`,
-                  height: "100%",
-                  background: "#00ffa3",
-                  boxShadow: "0 0 8px rgba(0,255,163,0.5)",
-                  transition: "width 0.04s",
-                }} />
-              </div>
-              {/* Percentage */}
-              <span style={{
-                fontSize: 28,
-                fontWeight: "bold",
-                letterSpacing: "0.15em",
-                color: "#00ffa3",
-                textShadow: "0 0 15px rgba(0,255,163,0.4)",
-              }}>
-                {loadingPercent}%
-              </span>
-              <span style={{
-                fontSize: 8,
-                letterSpacing: "0.3em",
-                opacity: 0.3,
-                textTransform: "uppercase" as const,
-              }}>
-                {loadingPercent < 100 ? "LOADING TERMINAL" : "READY"}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* npm install button */}
-        {showButton && (
-          <div style={{ paddingTop: 14 }}>
-            <button
-              onClick={handleInstall}
-              style={{
-                width: "100%",
-                padding: "12px 20px",
-                border: "1px solid rgba(0,255,163,0.35)",
-                background: "rgba(0,255,163,0.03)",
-                color: "#00ff88",
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 12,
-                letterSpacing: "0.2em",
-                textTransform: "uppercase" as const,
-                cursor: "pointer",
-                transition: "all 0.3s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "rgba(0,255,163,0.08)";
-                e.currentTarget.style.borderColor = "rgba(0,255,163,0.6)";
-                e.currentTarget.style.boxShadow = "0 0 20px rgba(0,255,163,0.12), inset 0 0 20px rgba(0,255,163,0.04)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "rgba(0,255,163,0.03)";
-                e.currentTarget.style.borderColor = "rgba(0,255,163,0.35)";
-                e.currentTarget.style.boxShadow = "none";
-              }}
-            >
-              {">"} npm install
-            </button>
-            <p style={{
-              textAlign: "center" as const, fontSize: 8,
-              color: "rgba(0,255,163,0.15)", marginTop: 6, letterSpacing: "0.25em",
-            }}>
-              PRESS TO INITIALIZE SUPERTEAM TERMINAL
-            </p>
+        {/* Centered branding */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column" as const, justifyContent: "center", alignItems: "center", gap: 12 }}>
+          <div style={{ fontSize: 16, letterSpacing: "0.2em", fontWeight: "bold" }}>SUPERTEAM // MY</div>
+          <div style={{ fontSize: 10, opacity: 0.4, letterSpacing: "0.15em" }}>SOLANA TERMINAL v1.0</div>
+          <div style={{ marginTop: 16, fontSize: 11, opacity: 0.3, animation: "cursor-blink 1.2s step-end infinite" }}>
+            Click to initialize...
           </div>
-        )}
+        </div>
       </div>
     </div>
     </div>
@@ -1240,10 +1019,11 @@ export default function Room3D({ onEnter }: Room3DProps) {
     setPhase("atScreen");
   }, []);
 
-  const handleInstall = useCallback(() => {
+  const handleScreenClick = useCallback(() => {
+    if (phase !== "atScreen") return;
     setPhase("entering");
-    setTimeout(onEnter, 600);
-  }, [onEnter]);
+    setTimeout(onEnter, 100);
+  }, [phase, onEnter]);
 
   return (
     <div className="fixed inset-0 z-[100]">
@@ -1270,7 +1050,7 @@ export default function Room3D({ onEnter }: Room3DProps) {
 
         {/* PC setup */}
         <group position={cfg.pcPos} rotation={[0, cfg.pcRotY, 0]}>
-          <Monitor materials={materials} hovered={hovered} tilt={cfg.monitorTilt} phase={phase} onInstall={handleInstall} />
+          <Monitor materials={materials} hovered={hovered} tilt={cfg.monitorTilt} />
           <SystemUnit materials={materials} />
           <Keyboard materials={materials} />
           {phase === "idle" && (
@@ -1286,13 +1066,7 @@ export default function Room3D({ onEnter }: Room3DProps) {
         <CameraController phase={phase} cfg={cfg} onZoomComplete={handleZoomComplete} />
       </Canvas>
 
-      {/* Green flash on enter */}
-      {phase === "entering" && (
-        <div
-          className="absolute inset-0 z-50 bg-sol-green/20"
-          style={{ animation: "fadeOut 0.6s ease-out forwards" }}
-        />
-      )}
+      {/* CinematicReveal overlays on top — no black screen needed */}
 
       {/* Scanline overlay */}
       <div
@@ -1317,6 +1091,20 @@ export default function Room3D({ onEnter }: Room3DProps) {
               SUPERTEAM MALAYSIA v1.0
             </p>
             <div className="h-px w-12 bg-text-secondary/10" />
+          </div>
+        </div>
+      )}
+
+      {/* Click anywhere to enter — shown when zoomed into screen */}
+      {phase === "atScreen" && (
+        <div
+          className="absolute inset-0 z-30 cursor-pointer"
+          onClick={handleScreenClick}
+        >
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-center">
+            <p className="font-mono text-xs text-sol-green tracking-[0.2em] uppercase" style={{ animation: "cursor-blink 1.2s step-end infinite" }}>
+              [ Click to Enter ]
+            </p>
           </div>
         </div>
       )}
