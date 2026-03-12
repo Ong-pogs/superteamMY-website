@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import LeftRail from "@/components/layout/LeftRail";
 import Footer from "@/components/layout/Footer";
@@ -17,28 +17,52 @@ import EventsSection from "@/components/sections/EventsSection";
 
 export default function Home() {
   const [entered, setEntered] = useState(false);
+  const [revealing, setRevealing] = useState(false);
+  const siteRef = useRef<HTMLDivElement>(null);
+
+  // Safety cleanup: remove any inline styles CinematicReveal set on the wrapper
+  useEffect(() => {
+    if (entered && siteRef.current) {
+      siteRef.current.style.position = '';
+      siteRef.current.style.inset = '';
+      siteRef.current.style.zIndex = '';
+      siteRef.current.style.clipPath = '';
+    }
+  }, [entered]);
 
   return (
     <>
-      {!entered && <EntryTransition onComplete={() => setEntered(true)} />}
+      {!entered && (
+        <EntryTransition
+          onComplete={() => setEntered(true)}
+          onReveal={() => setRevealing(true)}
+          siteRef={siteRef}
+        />
+      )}
 
-      <div className={entered ? "opacity-100" : "opacity-0"}>
-        <Navbar />
-        <LeftRail />
+      <div ref={siteRef} style={{ overflow: "hidden" }}>
+        <div
+          style={{
+            opacity: (revealing || entered) ? 1 : 0,
+          }}
+        >
+          <Navbar />
+          <LeftRail />
 
-        <main>
-          <HeroSection />
-          <MissionSection />
-          <StatsSection />
-          <MembersSpotlight />
-          <PartnersSection />
-          <WallOfLove />
-          <FAQSection />
-          <JoinCTA />
-          <EventsSection />
-        </main>
+          <main>
+            <HeroSection />
+            <MissionSection />
+            <StatsSection />
+            <MembersSpotlight />
+            <PartnersSection />
+            <WallOfLove />
+            <FAQSection />
+            <JoinCTA />
+            <EventsSection />
+          </main>
 
-        <Footer />
+          <Footer />
+        </div>
       </div>
     </>
   );

@@ -831,6 +831,7 @@ function CameraIdle({ active, cfg }: { active: boolean; cfg: SceneConfig }) {
 function ScreenTerminal() {
   return (
     <div
+      id="crt-screen-content"
       style={{
         width: 760,
         height: 600,

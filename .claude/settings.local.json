@@ -39,7 +39,12 @@
       "Bash(mkdir -p \"/c/Users/ongee/Downloads/3dcomptoscreen4\" && cd \"/c/Users/ongee/Downloads\" && unzip -o \"3dcomptoscreen4.zip\" -d \"3dcomptoscreen4\" 2>&1 | tail -5)",
       "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && cmd /c \"npm run dev\" 2>&1)",
       "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && npx next dev 2>&1)",
-      "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && npx next build 2>&1 | tail -10)"
+      "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && npx next build 2>&1 | tail -10)",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx next build 2>&1 | tail -5)",
+      "Bash(mkdir -p /tmp/statsref && unzip -o \"C:\\\\Users\\\\ongee\\\\Downloads\\\\statsmetricimpactscroll.zip\" -d /tmp/statsref 2>&1 | tail -5)",
+      "Bash(cp /tmp/statsref/ezgif-frame-001.jpg \"C:/Project/Solana Website/superteam-my/tmp_frame001.jpg\" && cp /tmp/statsref/ezgif-frame-010.jpg \"C:/Project/Solana Website/superteam-my/tmp_frame010.jpg\" && cp /tmp/statsref/ezgif-frame-020.jpg \"C:/Project/Solana Website/superteam-my/tmp_frame020.jpg\" && cp /tmp/statsref/ezgif-frame-030.jpg \"C:/Project/Solana Website/superteam-my/tmp_frame030.jpg\" && cp /tmp/statsref/ezgif-frame-045.jpg \"C:/Project/Solana Website/superteam-my/tmp_frame045.jpg\" && cp /tmp/statsref/ezgif-frame-060.jpg \"C:/Project/Solana Website/superteam-my/tmp_frame060.jpg\" && cp /tmp/statsref/ezgif-frame-075.jpg \"C:/Project/Solana Website/superteam-my/tmp_frame075.jpg\" && cp /tmp/statsref/ezgif-frame-090.jpg \"C:/Project/Solana Website/superteam-my/tmp_frame090.jpg\" && cp /tmp/statsref/ezgif-frame-105.jpg \"C:/Project/Solana Website/superteam-my/tmp_frame105.jpg\" && cp /tmp/statsref/ezgif-frame-120.jpg \"C:/Project/Solana Website/superteam-my/tmp_frame120.jpg\" && cp /tmp/statsref/ezgif-frame-136.jpg \"C:/Project/Solana Website/superteam-my/tmp_frame136.jpg\")",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx next build 2>&1 | grep -A 3 \"Error\")",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx next build 2>&1 | head -30)"
     ]
   }
 }

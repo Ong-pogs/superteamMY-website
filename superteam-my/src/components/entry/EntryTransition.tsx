@@ -9,6 +9,8 @@ const Room3D = lazy(() => import("./Room3D"));
 
 interface EntryTransitionProps {
   onComplete: () => void;
+  onReveal: () => void;
+  siteRef: React.RefObject<HTMLDivElement | null>;
 }
 
 function MobileFallback({ onEnter }: { onEnter: () => void }) {
@@ -79,7 +81,7 @@ function LoadingScreen() {
   );
 }
 
-export default function EntryTransition({ onComplete }: EntryTransitionProps) {
+export default function EntryTransition({ onComplete, onReveal, siteRef }: EntryTransitionProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [exiting, setExiting] = useState(false);
 
@@ -106,7 +108,7 @@ export default function EntryTransition({ onComplete }: EntryTransitionProps) {
       <Suspense fallback={<LoadingScreen />}>
         <Room3D onEnter={handleEnter} />
       </Suspense>
-      {exiting && <CinematicReveal onComplete={onComplete} />}
+      {exiting && <CinematicReveal onComplete={onComplete} onReveal={onReveal} siteRef={siteRef} />}
     </>
   );
 }

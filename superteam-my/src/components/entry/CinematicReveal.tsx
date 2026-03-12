@@ -1,141 +1,203 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 interface CinematicRevealProps {
   onComplete: () => void;
+  onReveal: () => void;
+  siteRef: React.RefObject<HTMLDivElement | null>;
 }
 
-export default function CinematicReveal({ onComplete }: CinematicRevealProps) {
-  const [phase, setPhase] = useState<"slit" | "expand" | "done">("slit");
-  const [expandProgress, setExpandProgress] = useState(0);
-  const rafRef = useRef<number>(0);
+function lerp(a: number, b: number, t: number) {
+  return a + (b - a) * t;
+}
 
-  // ── Phase: Vertical slit opens → expand ──
-  useEffect(() => {
-    if (phase !== "slit") return;
-    const timer = setTimeout(() => setPhase("expand"), 500);
-    return () => clearTimeout(timer);
-  }, [phase]);
+interface CrtBounds {
+  insetTop: number;
+  insetRight: number;
+  insetBottom: number;
+  insetLeft: number;
+}
 
-  // ── Phase: Expand from center to fullscreen → done ──
+// Padding in viewport % to shrink inward from measured edges
+const PADDING = 1.5;
+
+function getCrtBounds(): CrtBounds {
+  const el = document.getElementById("crt-screen-content");
+  if (!el) {
+    return { insetTop: 15, insetRight: 22, insetBottom: 22, insetLeft: 22 };
+  }
+  const rect = el.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  return {
+    insetTop: (rect.top / vh) * 100 + PADDING,
+    insetRight: ((vw - rect.right) / vw) * 100 + PADDING,
+    insetBottom: ((vh - rect.bottom) / vh) * 100 + PADDING,
+    insetLeft: (rect.left / vw) * 100 + PADDING,
+  };
+}
+
+export default function CinematicReveal({ onComplete, onReveal, siteRef }: CinematicRevealProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const slitRef = useRef<HTMLDivElement>(null);
+  const glowRef = useRef<HTMLDivElement>(null);
+  // Store callbacks in refs so they don't cause re-runs
+  const onRevealRef = useRef(onReveal);
+  const onCompleteRef = useRef(onComplete);
+  onRevealRef.current = onReveal;
+  onCompleteRef.current = onComplete;
+
   useEffect(() => {
-    if (phase !== "expand") return;
-    const start = Date.now();
-    const duration = 1000;
-    const tick = () => {
-      const elapsed = Date.now() - start;
-      const p = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - p, 3);
-      setExpandProgress(eased);
+    const siteEl = siteRef.current;
+    if (!siteEl) return;
+
+    let cancelled = false;
+
+    const bounds = getCrtBounds();
+
+    siteEl.style.position = "fixed";
+    siteEl.style.inset = "0";
+    siteEl.style.zIndex = "200";
+    siteEl.style.clipPath = `inset(${bounds.insetTop}% ${100 - bounds.insetLeft}% ${bounds.insetBottom}% ${bounds.insetLeft}%)`;
+
+    onRevealRef.current();
+
+    const crtTop = bounds.insetTop;
+    const crtH = 100 - bounds.insetTop - bounds.insetBottom;
+    const crtLeft = bounds.insetLeft;
+    const crtRight = 100 - bounds.insetRight;
+
+    // ── Wipe phase ──
+    let wipeStart = 0;
+    const wipeDuration = 800;
+
+    const wipe = (now: number) => {
+      if (cancelled) return;
+      if (!wipeStart) wipeStart = now;
+      const elapsed = now - wipeStart;
+      const p = Math.min(elapsed / wipeDuration, 1);
+      const eased = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+
+      const rightInset = lerp(100 - bounds.insetLeft, bounds.insetRight, eased);
+      siteEl.style.clipPath = `inset(${bounds.insetTop}% ${rightInset}% ${bounds.insetBottom}% ${bounds.insetLeft}%)`;
+
+      const slitX = 100 - rightInset;
+      if (slitRef.current) {
+        const visible = slitX > crtLeft + 0.5 && slitX < crtRight - 0.5;
+        slitRef.current.style.display = visible ? "block" : "none";
+        slitRef.current.style.left = `${slitX}%`;
+        slitRef.current.style.top = `${crtTop}%`;
+        slitRef.current.style.height = `${crtH}%`;
+      }
+      if (glowRef.current) {
+        const visible = slitX > crtLeft + 2 && slitX < crtRight - 0.5;
+        glowRef.current.style.display = visible ? "block" : "none";
+        glowRef.current.style.left = `${Math.max(crtLeft, slitX - 5)}%`;
+        glowRef.current.style.top = `${crtTop}%`;
+        glowRef.current.style.height = `${crtH}%`;
+      }
+
       if (p < 1) {
-        rafRef.current = requestAnimationFrame(tick);
+        requestAnimationFrame(wipe);
       } else {
-        setPhase("done");
-        onComplete();
+        if (slitRef.current) slitRef.current.style.display = "none";
+        if (glowRef.current) glowRef.current.style.display = "none";
+        requestAnimationFrame(expand);
       }
     };
-    rafRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [phase, onComplete]);
 
-  if (phase === "done") return null;
+    // ── Expand phase ──
+    let expandStart = 0;
+    const expandDuration = 600;
 
-  const showSlit = phase === "slit";
-  const showExpand = phase === "expand";
+    const expand = (now: number) => {
+      if (cancelled) return;
+      if (!expandStart) expandStart = now;
+      const elapsed = now - expandStart;
+      const p = Math.min(elapsed / expandDuration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
 
-  const startW = 4;
-  const startH = 40;
-  const w = showExpand ? startW + (100 - startW) * expandProgress : startW;
-  const h = showExpand ? startH + (100 - startH) * expandProgress : startH;
-  const x = (100 - w) / 2;
-  const y = (100 - h) / 2;
+      const t = lerp(bounds.insetTop, 0, eased);
+      const r = lerp(bounds.insetRight, 0, eased);
+      const b = lerp(bounds.insetBottom, 0, eased);
+      const l = lerp(bounds.insetLeft, 0, eased);
 
-  const scanlineOpacity = Math.max(0, 1 - expandProgress * 1.8);
+      siteEl.style.clipPath = `inset(${t}% ${r}% ${b}% ${l}%)`;
+
+      if (p < 1) {
+        requestAnimationFrame(expand);
+      } else {
+        siteEl.style.position = "";
+        siteEl.style.inset = "";
+        siteEl.style.zIndex = "";
+        siteEl.style.clipPath = "";
+        if (containerRef.current) containerRef.current.style.display = "none";
+        onCompleteRef.current();
+      }
+    };
+
+    requestAnimationFrame(wipe);
+
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <div className="fixed inset-0 z-[100] pointer-events-none">
+    <div ref={containerRef} className="fixed inset-0 z-[250] pointer-events-none">
 
-      {/* ═══ LAYER 1: VERTICAL SLIT ═══ */}
-      {showSlit && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div
-            style={{
-              width: 2,
-              height: 0,
-              background: "rgba(0,255,163,0.5)",
-              boxShadow: "0 0 20px rgba(0,255,163,0.3), 0 0 60px rgba(0,255,163,0.1)",
-              animation: "cinematic-slit-open 0.4s ease-out forwards",
-            }}
-          />
+      {/* ── DEBUG: Phase indicator ── */}
+      <div
+        style={{
+          position: "absolute",
+          top: 12,
+          left: "50%",
+          transform: "translateX(-50%)",
+          padding: "4px 16px",
+          background: "rgba(0,0,0,0.9)",
+          color: "#ff0",
+          fontSize: 14,
+          fontFamily: "monospace",
+          fontWeight: "bold",
+          borderRadius: 4,
+          zIndex: 99999,
+          border: "2px solid #ff0",
+        }}
+      >
+        CINEMATIC REVEAL
+      </div>
+
+      {/* ═══ GREEN WIPE LINE — positioned via ref, no React state ═══ */}
+      <div
+        ref={slitRef}
+        style={{
+          position: "absolute",
+          display: "none",
+          width: 2,
+          background: "rgba(0,255,163,0.7)",
+          boxShadow: "0 0 20px 6px rgba(0,255,163,0.35), 0 0 60px 12px rgba(0,255,163,0.15)",
+          transform: "translateX(-50%)",
+        }}
+      >
+        <div style={{ position: "absolute", top: 4, left: 8, padding: "2px 8px", background: "rgba(0,0,0,0.85)", color: "#00ff00", fontSize: 11, fontFamily: "monospace", fontWeight: "bold", borderRadius: 3, border: "1px solid #00ff00", whiteSpace: "nowrap" }}>
+          SLIT LINE
         </div>
-      )}
+      </div>
 
-      {/* ═══ LAYER 2: EXPANDING WINDOW ═══ */}
-      {showExpand && (
-        <div
-          style={{
-            position: "absolute",
-            left: `${x}%`,
-            top: `${y}%`,
-            width: `${w}%`,
-            height: `${h}%`,
-            overflow: "hidden",
-            borderRadius: expandProgress < 0.95 ? `${(1 - expandProgress) * 8}px` : 0,
-          }}
-        >
-          {/* LAYER 2A: BG GRADIENT */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background: expandProgress < 0.3
-                ? "radial-gradient(ellipse at center, #0a1a0a 0%, #040a04 60%, #020402 100%)"
-                : `linear-gradient(135deg, #0A0A0F 0%, #111118 50%, #0A0A0F 100%)`,
-              transition: "background 0.5s",
-            }}
-          />
-
-          {/* LAYER 2B: CRT SCANLINES (fading) */}
-          {scanlineOpacity > 0 && (
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: "repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px)",
-                opacity: scanlineOpacity,
-              }}
-            />
-          )}
-
-          {/* LAYER 2C: CRT VIGNETTE (fading) */}
-          {scanlineOpacity > 0 && (
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                boxShadow: "inset 0 0 100px 40px rgba(0,0,0,0.5)",
-                opacity: scanlineOpacity,
-              }}
-            />
-          )}
-
-          {/* LAYER 2D: GREEN CENTER GLOW */}
-          {expandProgress < 0.5 && (
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: "radial-gradient(ellipse at center, rgba(0,255,163,0.08) 0%, transparent 60%)",
-                opacity: 1 - expandProgress * 2.5,
-              }}
-            />
-          )}
+      {/* ═══ GREEN GLOW TRAIL — positioned via ref, no React state ═══ */}
+      <div
+        ref={glowRef}
+        style={{
+          position: "absolute",
+          display: "none",
+          width: "5%",
+          background: "linear-gradient(to right, transparent, rgba(0,255,163,0.06))",
+        }}
+      >
+        <div style={{ position: "absolute", top: 30, left: 8, padding: "2px 8px", background: "rgba(0,0,0,0.85)", color: "#00ff88", fontSize: 11, fontFamily: "monospace", fontWeight: "bold", borderRadius: 3, border: "1px solid #00ff88", whiteSpace: "nowrap" }}>
+          GLOW TRAIL
         </div>
-      )}
-
-      <style jsx>{`
-        @keyframes cinematic-slit-open {
-          from { height: 0; opacity: 0; }
-          to { height: 55%; opacity: 1; }
-        }
-      `}</style>
+      </div>
     </div>
   );
 }
