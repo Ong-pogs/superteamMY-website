@@ -20,12 +20,9 @@ export default function Home() {
   const [revealing, setRevealing] = useState(false);
   const siteRef = useRef<HTMLDivElement>(null);
 
-  // Safety cleanup: remove any inline styles CinematicReveal set on the wrapper
+  // Safety: clear any leftover inline clip-path after transition
   useEffect(() => {
     if (entered && siteRef.current) {
-      siteRef.current.style.position = '';
-      siteRef.current.style.inset = '';
-      siteRef.current.style.zIndex = '';
       siteRef.current.style.clipPath = '';
     }
   }, [entered]);
@@ -40,10 +37,22 @@ export default function Home() {
         />
       )}
 
-      <div ref={siteRef} style={{ overflow: "hidden" }}>
+      <div
+        ref={siteRef}
+        style={{
+          overflowX: "clip",
+          ...(entered ? {} : {
+            position: "relative" as const,
+            zIndex: 200,
+            pointerEvents: "none" as const,
+            willChange: "clip-path",
+          }),
+        }}
+      >
         <div
           style={{
             opacity: (revealing || entered) ? 1 : 0,
+            background: "#0A0A0F",
           }}
         >
           <Navbar />

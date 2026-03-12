@@ -226,6 +226,8 @@ public/models/ibm_pc.glb — 17MB IBM PC 3D model (1 node "model", 1 mesh)
 
 8. **Framer-motion variants `ease` typing**: When using `ease: "easeOut"` inside a `variants` object, it must be `ease: "easeOut" as const` to satisfy TypeScript. Fixed in PartnersSection and WallOfLove.
 
+9. **CinematicReveal transition (COMPLETE)**: Slit-wipe approach implemented. Green slit sweeps left→right within the CRT monitor screen using pixel-based `clip-path: polygon()` animated via rAF. CRT bounds measured from `id="crt-screen-content"` on ScreenTerminal via `getBoundingClientRect`. After wipe, CRT area expands to fill viewport covering the 3D room. 3D room stays fully visible around the CRT during the entire wipe. Layout stack: outer wrapper is `position: relative; z-index: 200` (transparent) so 3D canvas shows through outside clip-path; background `#0A0A0F` lives on the inner div. All animation via direct DOM manipulation + rAF — no React state mutations during animation. React 18 Strict Mode handled via local `cancelled` flag. Leva dev panel hidden. Debug labels removed.
+
 ---
 
 ## CURRENT KNOWN BUGS / ISSUES

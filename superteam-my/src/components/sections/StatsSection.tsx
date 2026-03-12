@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { useRef, useState, useMemo, useEffect } from "react";
+import { motion, useScroll, useTransform, useMotionValueEvent } from "framer-motion";
 import { cn } from "@/lib/utils";
 import SectionLabel from "@/components/ui/SectionLabel";
 import Counter from "@/components/ui/Counter";
@@ -10,88 +10,355 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 // ─── Data ────────────────────────────────────────────────
 
-const stats = [
-  { label: "Community Members", value: 500, suffix: "+", tag: "MMBR", color: "green" as const },
-  { label: "Events Hosted", value: 25, suffix: "", tag: "EVNT", color: "purple" as const },
-  { label: "Projects Built", value: 80, suffix: "", tag: "PROJ", color: "blue" as const },
-  { label: "Bounties Completed", value: 150, suffix: "", tag: "BNTY", color: "gold" as const },
-  { label: "Community Reach", value: 10, suffix: "K+", tag: "RECH", color: "green" as const },
-];
+type StatColor = "green" | "purple" | "blue" | "gold";
 
-type StatColor = (typeof stats)[number]["color"];
-
-const colors: Record<StatColor, { text: string; bg: string; border: string; glow: string }> = {
-  green:  { text: "text-sol-green",   bg: "bg-sol-green",   border: "border-sol-green/30",   glow: "hover:shadow-[0_0_20px_rgba(0,255,163,0.12)]" },
-  purple: { text: "text-sol-purple",  bg: "bg-sol-purple",  border: "border-sol-purple/30",  glow: "hover:shadow-[0_0_20px_rgba(153,69,255,0.12)]" },
-  blue:   { text: "text-sol-blue",    bg: "bg-sol-blue",    border: "border-sol-blue/30",    glow: "hover:shadow-[0_0_20px_rgba(20,241,149,0.12)]" },
-  gold:   { text: "text-gold-accent", bg: "bg-gold-accent", border: "border-gold-accent/30", glow: "hover:shadow-[0_0_20px_rgba(255,184,0,0.12)]" },
+const colors: Record<StatColor, { text: string; bg: string; border: string; glow: string; rgb: string }> = {
+  green:  { text: "text-sol-green",   bg: "bg-sol-green",   border: "border-sol-green/30",   glow: "shadow-[0_0_20px_rgba(0,255,163,0.15)]",  rgb: "0,255,163" },
+  purple: { text: "text-sol-purple",  bg: "bg-sol-purple",  border: "border-sol-purple/30",  glow: "shadow-[0_0_20px_rgba(153,69,255,0.15)]", rgb: "153,69,255" },
+  blue:   { text: "text-sol-blue",    bg: "bg-sol-blue",    border: "border-sol-blue/30",    glow: "shadow-[0_0_20px_rgba(20,241,149,0.15)]",  rgb: "20,241,149" },
+  gold:   { text: "text-gold-accent", bg: "bg-gold-accent", border: "border-gold-accent/30", glow: "shadow-[0_0_20px_rgba(255,184,0,0.15)]",   rgb: "255,184,0" },
 };
 
-// ─── Stat Card ───────────────────────────────────────────
+interface PrimaryStat {
+  label: string;
+  value: number;
+  suffix: string;
+  tag: string;
+  color: StatColor;
+  top: number;
+  left: number;
+}
 
-function StatCard({ stat, index }: { stat: (typeof stats)[0]; index: number }) {
-  const c = colors[stat.color];
+interface SatelliteNode {
+  id: string;
+  label: string;
+  parent: string;
+  value: string;
+  top: number;
+  left: number;
+}
 
+const stats: PrimaryStat[] = [
+  { label: "Community Members", value: 500, suffix: "+", tag: "MMBR", color: "green",  top: 15, left: 18 },
+  { label: "Events Hosted",    value: 25,  suffix: "",  tag: "EVNT", color: "purple", top: 12, left: 55 },
+  { label: "Projects Built",   value: 80,  suffix: "",  tag: "PROJ", color: "blue",   top: 42, left: 35 },
+  { label: "Bounties Completed", value: 150, suffix: "", tag: "BNTY", color: "gold",  top: 38, left: 72 },
+  { label: "Community Reach",  value: 10,  suffix: "K+", tag: "RECH", color: "green", top: 65, left: 50 },
+];
+
+const satellites: SatelliteNode[] = [
+  // MMBR
+  { id: "DEV",   label: "Developers",  parent: "MMBR", value: "180", top: 8,  left: 10 },
+  { id: "DSGN",  label: "Designers",   parent: "MMBR", value: "85",  top: 25, left: 8 },
+  { id: "CMMGR", label: "Comm Mgrs",   parent: "MMBR", value: "60",  top: 22, left: 28 },
+  // EVNT
+  { id: "HACK",  label: "Hackathons",  parent: "EVNT", value: "8",   top: 5,  left: 45 },
+  { id: "WKSHP", label: "Workshops",   parent: "EVNT", value: "12",  top: 5,  left: 65 },
+  // PROJ
+  { id: "DEFI",  label: "DeFi",        parent: "PROJ", value: "25",  top: 35, left: 22 },
+  { id: "NFT",   label: "NFT/Gaming",  parent: "PROJ", value: "30",  top: 50, left: 23 },
+  // BNTY
+  { id: "COMP",  label: "Completed",   parent: "BNTY", value: "120", top: 30, left: 82 },
+  { id: "ACTV",  label: "Active",      parent: "BNTY", value: "30",  top: 48, left: 85 },
+  // RECH
+  { id: "TWTR",  label: "Twitter",     parent: "RECH", value: "5K",  top: 72, left: 38 },
+  { id: "DSCRD", label: "Discord",     parent: "RECH", value: "3K",  top: 72, left: 62 },
+];
+
+// Primary-to-primary connections
+const primaryConnections: [string, string][] = [
+  ["MMBR", "PROJ"], ["EVNT", "PROJ"], ["PROJ", "BNTY"], ["PROJ", "RECH"], ["BNTY", "RECH"],
+];
+
+// Parent-to-satellite connections
+const satelliteConnections: [string, string][] = [
+  ["MMBR", "DEV"], ["MMBR", "DSGN"], ["MMBR", "CMMGR"],
+  ["EVNT", "HACK"], ["EVNT", "WKSHP"],
+  ["PROJ", "DEFI"], ["PROJ", "NFT"],
+  ["BNTY", "COMP"], ["BNTY", "ACTV"],
+  ["RECH", "TWTR"], ["RECH", "DSCRD"],
+];
+
+const milestones = [
+  { label: "Founded 2023", done: true },
+  { label: "100 Members",  done: true },
+  { label: "First Hackathon", done: true },
+  { label: "25+ Events",   done: true },
+  { label: "500+ Community", done: false },
+];
+
+// ─── Helper: find node center by tag/id ──────────────────
+
+function nodeCenter(tag: string): { x: number; y: number } {
+  const p = stats.find((s) => s.tag === tag);
+  if (p) return { x: p.left, y: p.top };
+  const s = satellites.find((n) => n.id === tag);
+  if (s) return { x: s.left, y: s.top };
+  return { x: 50, y: 50 };
+}
+
+// ─── StatsPanel (left side, initial state) ───────────────
+
+function StatsPanel() {
+  return (
+    <div className="flex flex-col justify-center h-full px-4 md:px-8 lg:px-12">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        viewport={{ once: true }}
+        className="mb-8"
+      >
+        <SectionLabel number="03" label="Impact Matrix" />
+        <h2 className="mt-4 font-display font-black text-3xl md:text-4xl tracking-tight">
+          <span className="text-text-primary">Network </span>
+          <span className="text-sol-green text-glow">Metrics</span>
+        </h2>
+        <p className="mt-2 font-mono text-[0.65rem] text-text-secondary/50 tracking-[0.1em]">
+          // REAL-TIME COMMUNITY DATA — LAST SYNC: {new Date().toISOString().split("T")[0]}
+        </p>
+      </motion.div>
+
+      {/* Stat rows */}
+      <div className="space-y-3">
+        {stats.map((stat, i) => {
+          const c = colors[stat.color];
+          return (
+            <motion.div
+              key={stat.tag}
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4, delay: i * 0.1 }}
+              viewport={{ once: true, margin: "-30px" }}
+              className="flex items-center gap-3 group"
+            >
+              {/* Color dot */}
+              <div className={cn("h-2 w-2 rounded-full shrink-0", c.bg)} />
+              {/* Tag */}
+              <span className={cn("font-mono text-[0.65rem] font-medium tracking-[0.2em] w-12 shrink-0", c.text)}>
+                {stat.tag}
+              </span>
+              {/* Dashed rule */}
+              <div className="flex-1 border-t border-dashed border-border-dim" />
+              {/* Counter value */}
+              <Counter
+                end={stat.value}
+                suffix={stat.suffix}
+                className={cn("font-display font-black text-2xl tracking-tight", c.text)}
+              />
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Terminal status */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.6 }}
+        viewport={{ once: true }}
+        className="mt-8 font-mono text-[0.55rem] text-sol-green/30 tracking-[0.1em]"
+      >
+        {">"} matrix_scan: <span className="text-sol-green/60">ready</span>
+        <span className="cursor-blink ml-1">_</span>
+      </motion.div>
+    </div>
+  );
+}
+
+// ─── LogoPlaceholder (slides right → left) ───────────────
+
+function LogoPlaceholder() {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
-      viewport={{ once: true, margin: "-50px" }}
-      className={cn(
-        "relative border bg-bg-panel/80 backdrop-blur-sm p-5 md:p-6",
-        "transition-all duration-300 hover:border-border-active",
-        c.border, c.glow,
-      )}
+      initial={{ opacity: 0, scale: 0.9 }}
+      whileInView={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.6 }}
+      viewport={{ once: true }}
+      className="relative flex flex-col items-center justify-center h-full"
     >
-      <Crosshair position="top-left" />
-      <Crosshair position="bottom-right" />
+      {/* Circular platform ring */}
+      <div className="absolute w-48 h-48 md:w-64 md:h-64 rounded-full border border-dashed border-sol-green/15" />
+      <div className="absolute w-56 h-56 md:w-72 md:h-72 rounded-full border border-sol-green/8" />
 
-      {/* Tag + index */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className={cn("h-1.5 w-1.5 rounded-full", c.bg)} />
-          <span className={cn("font-mono text-[0.6rem] font-medium tracking-[0.2em]", c.text)}>
-            {stat.tag}
-          </span>
-        </div>
-        <span className="font-mono text-[0.5rem] text-text-secondary/30">
-          [{String(index + 1).padStart(2, "0")}]
-        </span>
+      {/* Dashed container */}
+      <div className="relative w-36 h-36 md:w-48 md:h-48 border-2 border-dashed border-sol-green/25 rounded-xl flex items-center justify-center">
+        {/* Rotating Solana SVG outline */}
+        <svg
+          className="spin-slow w-20 h-20 md:w-28 md:h-28"
+          viewBox="0 0 100 100"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          {/* Simplified Solana-inspired diamond/rhombus */}
+          <path
+            d="M50 5 L90 30 L50 55 L10 30 Z"
+            stroke="rgba(0,255,163,0.4)"
+            strokeWidth="1.5"
+            fill="none"
+          />
+          <path
+            d="M50 25 L90 50 L50 75 L10 50 Z"
+            stroke="rgba(0,255,163,0.25)"
+            strokeWidth="1"
+            fill="none"
+          />
+          <path
+            d="M50 45 L90 70 L50 95 L10 70 Z"
+            stroke="rgba(0,255,163,0.15)"
+            strokeWidth="1"
+            fill="none"
+          />
+        </svg>
       </div>
-
-      {/* Big counter */}
-      <Counter
-        end={stat.value}
-        suffix={stat.suffix}
-        className={cn("font-display font-black text-4xl md:text-5xl tracking-tight", c.text)}
-      />
 
       {/* Label */}
-      <div className="mt-3 font-mono text-[0.65rem] tracking-[0.08em] text-text-secondary uppercase">
-        {stat.label}
-      </div>
-
-      {/* Bottom accent line */}
-      <div className="absolute bottom-0 left-0 right-0 h-[2px] overflow-hidden">
-        <motion.div
-          initial={{ width: "0%" }}
-          whileInView={{ width: "100%" }}
-          transition={{ duration: 1.2, delay: 0.3 + index * 0.15, ease: "easeOut" as const }}
-          viewport={{ once: true }}
-          className={cn("h-full", c.bg)}
-          style={{ opacity: 0.6 }}
-        />
+      <div className="mt-6 font-mono text-[0.55rem] text-text-secondary/40 tracking-[0.15em] text-center">
+        // 3D_ASSET :: PENDING
       </div>
     </motion.div>
   );
 }
 
-// ─── Grid Surface Background ─────────────────────────────
+// ─── StatNode (primary & satellite) ──────────────────────
 
-function GridSurface() {
+function StatNode({
+  tag,
+  label,
+  value,
+  suffix,
+  color,
+  isPrimary,
+  index,
+  hoveredParent,
+  onHover,
+  parentTag,
+}: {
+  tag: string;
+  label: string;
+  value: number | string;
+  suffix?: string;
+  color: StatColor;
+  isPrimary: boolean;
+  index: number;
+  hoveredParent: string | null;
+  onHover: (tag: string | null) => void;
+  parentTag?: string;
+}) {
+  const c = colors[color];
+
+  // Dim logic: if something is hovered, dim nodes that aren't the hovered parent or its children
+  const isActive =
+    hoveredParent === null ||
+    (isPrimary && hoveredParent === tag) ||
+    (!isPrimary && hoveredParent === parentTag);
+
+  const size = isPrimary ? "w-[72px] h-[72px] md:w-[80px] md:h-[80px]" : "w-[40px] h-[40px] md:w-[45px] md:h-[45px]";
+
   return (
-    <div className="absolute inset-0 -m-6 overflow-hidden pointer-events-none">
+    <motion.div
+      initial={{ opacity: 0, scale: 0 }}
+      whileInView={{ opacity: isPrimary ? 1 : 0.5, scale: 1 }}
+      transition={{ duration: isPrimary ? 0.5 : 0.3, delay: isPrimary ? index * 0.15 : 0.5 + index * 0.08 }}
+      viewport={{ once: true }}
+      whileHover={{ scale: 1.1 }}
+      onMouseEnter={() => isPrimary && onHover(tag)}
+      onMouseLeave={() => isPrimary && onHover(null)}
+      className={cn(
+        "absolute rounded-full flex flex-col items-center justify-center cursor-default transition-opacity duration-200 z-10",
+        size,
+        isPrimary && "node-pulse",
+        isActive ? "opacity-100" : "opacity-20",
+      )}
+      style={{
+        border: `${isPrimary ? 2 : 1}px solid rgba(${c.rgb}, ${isPrimary ? 0.5 : 0.3})`,
+        background: `radial-gradient(circle, rgba(${c.rgb}, 0.08) 0%, rgba(${c.rgb}, 0.02) 100%)`,
+        transform: "translate(-50%, -50%)",
+      }}
+    >
+      <span
+        className={cn(
+          "font-mono font-medium tracking-[0.1em] leading-none",
+          c.text,
+          isPrimary ? "text-[0.55rem] md:text-[0.6rem]" : "text-[0.4rem] md:text-[0.45rem]",
+        )}
+      >
+        {tag}
+      </span>
+      {isPrimary ? (
+        <span className={cn("font-display font-black text-[0.7rem] md:text-xs leading-none mt-0.5", c.text)}>
+          {typeof value === "number" ? <Counter end={value} suffix={suffix} className="" /> : `${value}${suffix || ""}`}
+        </span>
+      ) : (
+        <span className="font-mono text-[0.4rem] text-text-secondary/60 leading-none mt-0.5">
+          {value}
+        </span>
+      )}
+    </motion.div>
+  );
+}
+
+// ─── ConnectionLines SVG ─────────────────────────────────
+
+function ConnectionLines({ hoveredParent }: { hoveredParent: string | null }) {
+  return (
+    <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" preserveAspectRatio="none">
+      {/* Primary-to-primary: thicker dashed lines */}
+      {primaryConnections.map(([from, to]) => {
+        const a = nodeCenter(from);
+        const b = nodeCenter(to);
+        const active =
+          hoveredParent === null || hoveredParent === from || hoveredParent === to;
+        return (
+          <motion.line
+            key={`${from}-${to}`}
+            x1={`${a.x}%`}
+            y1={`${a.y}%`}
+            x2={`${b.x}%`}
+            y2={`${b.y}%`}
+            stroke="rgba(0,255,163,0.2)"
+            strokeWidth="1.5"
+            strokeDasharray="6 4"
+            initial={{ pathLength: 0, opacity: 0 }}
+            whileInView={{ pathLength: 1, opacity: active ? 1 : 0.15 }}
+            transition={{ duration: 1.2, delay: 0.5 }}
+            viewport={{ once: true }}
+          />
+        );
+      })}
+      {/* Parent-to-satellite: thin solid lines */}
+      {satelliteConnections.map(([from, to]) => {
+        const a = nodeCenter(from);
+        const b = nodeCenter(to);
+        const parentStat = stats.find((s) => s.tag === from);
+        const rgb = parentStat ? colors[parentStat.color].rgb : "0,255,163";
+        const active = hoveredParent === null || hoveredParent === from;
+        return (
+          <motion.line
+            key={`${from}-${to}`}
+            x1={`${a.x}%`}
+            y1={`${a.y}%`}
+            x2={`${b.x}%`}
+            y2={`${b.y}%`}
+            stroke={`rgba(${rgb},0.15)`}
+            strokeWidth="0.75"
+            initial={{ pathLength: 0, opacity: 0 }}
+            whileInView={{ pathLength: 1, opacity: active ? 1 : 0.1 }}
+            transition={{ duration: 1.2, delay: 0.7 }}
+            viewport={{ once: true }}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+// ─── Grid Surface (floor background) ─────────────────────
+
+function FloorGrid() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
       {/* Main grid */}
       <div
         className="absolute inset-0 opacity-25"
@@ -103,7 +370,6 @@ function GridSurface() {
           backgroundSize: "60px 60px",
         }}
       />
-
       {/* Fine sub-grid */}
       <div
         className="absolute inset-0 opacity-15"
@@ -115,7 +381,6 @@ function GridSurface() {
           backgroundSize: "15px 15px",
         }}
       />
-
       {/* Center radial glow */}
       <div
         className="absolute inset-0"
@@ -123,48 +388,216 @@ function GridSurface() {
           background: "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(0,255,163,0.04) 0%, transparent 70%)",
         }}
       />
-
-      {/* Fade edges so grid doesn't have hard cuts */}
+      {/* Fade edges */}
       <div
         className="absolute inset-0"
         style={{
           background: `
-            linear-gradient(180deg, rgba(10,10,15,1) 0%, transparent 15%, transparent 85%, rgba(10,10,15,1) 100%),
-            linear-gradient(90deg, rgba(10,10,15,1) 0%, transparent 10%, transparent 90%, rgba(10,10,15,1) 100%)
+            linear-gradient(180deg, rgba(10,10,15,0.8) 0%, transparent 15%, transparent 85%, rgba(10,10,15,0.8) 100%),
+            linear-gradient(90deg, rgba(10,10,15,0.6) 0%, transparent 10%, transparent 90%, rgba(10,10,15,0.6) 100%)
           `,
         }}
       />
+      {/* Coordinate markers */}
+      <div className="absolute top-2 left-2 font-mono text-[0.45rem] text-sol-green/15 tracking-[0.1em]">
+        X:0.00 Y:0.00
+      </div>
+      <div className="absolute top-2 right-2 font-mono text-[0.45rem] text-sol-green/15 tracking-[0.1em]">
+        X:1.00 Y:0.00
+      </div>
+      <div className="absolute bottom-2 left-2 font-mono text-[0.45rem] text-sol-green/15 tracking-[0.1em]">
+        X:0.00 Y:1.00
+      </div>
+      <div className="absolute bottom-2 right-2 font-mono text-[0.45rem] text-sol-green/15 tracking-[0.1em]">
+        X:1.00 Y:1.00
+      </div>
     </div>
   );
 }
 
-// ─── Decorative coordinate markers ───────────────────────
+// ─── ProgressionTrack ────────────────────────────────────
 
-function CoordMarkers() {
+function ProgressionTrack({ scrollProgress }: { scrollProgress: number }) {
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      {/* Top-left coordinate */}
-      <div className="absolute top-0 left-0 font-mono text-[0.45rem] text-sol-green/15 tracking-[0.1em]">
-        X:0.00 Y:0.00
+    <div className="absolute bottom-4 left-4 right-4 z-20">
+      <div className="relative flex items-center justify-between">
+        {/* Background line */}
+        <div className="absolute left-0 right-0 top-1/2 h-px bg-border-dim" />
+        {/* Animated fill line */}
+        <div
+          className="absolute left-0 top-1/2 h-px bg-sol-green/40 transition-all duration-300"
+          style={{ width: `${Math.min(scrollProgress * 120, 100)}%` }}
+        />
+        {/* Milestone dots */}
+        {milestones.map((m, i) => {
+          const fillProgress = scrollProgress * 120;
+          const dotPosition = (i / (milestones.length - 1)) * 100;
+          const isReached = fillProgress >= dotPosition;
+          return (
+            <div key={m.label} className="relative z-10 flex flex-col items-center">
+              <div
+                className={cn(
+                  "w-2.5 h-2.5 rounded-full border transition-colors duration-300",
+                  isReached && m.done
+                    ? "bg-sol-green/80 border-sol-green/60"
+                    : m.done
+                      ? "bg-sol-green/30 border-sol-green/30"
+                      : "bg-transparent border-border-dim",
+                )}
+              />
+              <span className="mt-1.5 font-mono text-[0.4rem] text-text-secondary/40 tracking-[0.05em] whitespace-nowrap">
+                {m.label}
+              </span>
+            </div>
+          );
+        })}
       </div>
-      {/* Top-right */}
-      <div className="absolute top-0 right-0 font-mono text-[0.45rem] text-sol-green/15 tracking-[0.1em]">
-        X:1.00 Y:0.00
-      </div>
-      {/* Bottom-left */}
-      <div className="absolute bottom-0 left-0 font-mono text-[0.45rem] text-sol-green/15 tracking-[0.1em]">
-        X:0.00 Y:1.00
-      </div>
-      {/* Bottom-right */}
-      <div className="absolute bottom-0 right-0 font-mono text-[0.45rem] text-sol-green/15 tracking-[0.1em]">
-        X:1.00 Y:1.00
-      </div>
-
-      {/* Dashed horizontal center line */}
-      <div className="absolute top-1/2 left-0 right-0 border-t border-dashed border-sol-green/8" />
-      {/* Dashed vertical center line */}
-      <div className="absolute top-0 bottom-0 left-1/2 border-l border-dashed border-sol-green/8" />
     </div>
+  );
+}
+
+// ─── NodeGrid (tilted floor with all nodes) ──────────────
+
+function NodeGrid({ scrollProgress }: { scrollProgress: number }) {
+  const [hoveredParent, setHoveredParent] = useState<string | null>(null);
+
+  // Build satellite color lookup from parent
+  const satelliteColorMap = useMemo(() => {
+    const map: Record<string, StatColor> = {};
+    for (const sat of satellites) {
+      const parent = stats.find((s) => s.tag === sat.parent);
+      if (parent) map[sat.id] = parent.color;
+    }
+    return map;
+  }, []);
+
+  return (
+    <div className="relative w-full h-full">
+      <FloorGrid />
+      <Crosshair position="top-left" />
+      <Crosshair position="top-right" />
+      <Crosshair position="bottom-left" />
+      <Crosshair position="bottom-right" />
+
+      {/* Connection lines */}
+      <ConnectionLines hoveredParent={hoveredParent} />
+
+      {/* Primary stat nodes */}
+      {stats.map((stat, i) => (
+        <div
+          key={stat.tag}
+          className="absolute"
+          style={{ top: `${stat.top}%`, left: `${stat.left}%` }}
+        >
+          <StatNode
+            tag={stat.tag}
+            label={stat.label}
+            value={stat.value}
+            suffix={stat.suffix}
+            color={stat.color}
+            isPrimary
+            index={i}
+            hoveredParent={hoveredParent}
+            onHover={setHoveredParent}
+          />
+        </div>
+      ))}
+
+      {/* Satellite nodes */}
+      {satellites.map((sat, i) => (
+        <div
+          key={sat.id}
+          className="absolute"
+          style={{ top: `${sat.top}%`, left: `${sat.left}%` }}
+        >
+          <StatNode
+            tag={sat.id}
+            label={sat.label}
+            value={sat.value}
+            color={satelliteColorMap[sat.id] || "green"}
+            isPrimary={false}
+            index={i}
+            hoveredParent={hoveredParent}
+            onHover={setHoveredParent}
+            parentTag={sat.parent}
+          />
+        </div>
+      ))}
+
+      {/* Progression track */}
+      <ProgressionTrack scrollProgress={scrollProgress} />
+    </div>
+  );
+}
+
+// ─── Mobile Fallback ─────────────────────────────────────
+
+function MobileStats() {
+  return (
+    <section id="stats" className="relative py-20 px-4 overflow-hidden">
+      <div className="mx-auto max-w-lg">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          viewport={{ once: true }}
+          className="mb-8"
+        >
+          <SectionLabel number="03" label="Impact Matrix" />
+          <h2 className="mt-4 font-display font-black text-2xl tracking-tight">
+            <span className="text-text-primary">Network </span>
+            <span className="text-sol-green text-glow">Metrics</span>
+          </h2>
+        </motion.div>
+
+        {/* 2-column compact cards */}
+        <div className="grid grid-cols-2 gap-3">
+          {stats.map((stat, i) => {
+            const c = colors[stat.color];
+            return (
+              <motion.div
+                key={stat.tag}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: i * 0.08 }}
+                viewport={{ once: true, margin: "-20px" }}
+                className={cn(
+                  "relative border bg-bg-panel/80 backdrop-blur-sm p-4",
+                  c.border,
+                  i === stats.length - 1 && stats.length % 2 !== 0 && "col-span-2",
+                )}
+              >
+                <div className="flex items-center gap-1.5 mb-2">
+                  <div className={cn("h-1.5 w-1.5 rounded-full", c.bg)} />
+                  <span className={cn("font-mono text-[0.55rem] font-medium tracking-[0.2em]", c.text)}>
+                    {stat.tag}
+                  </span>
+                </div>
+                <Counter
+                  end={stat.value}
+                  suffix={stat.suffix}
+                  className={cn("font-display font-black text-2xl tracking-tight", c.text)}
+                />
+                <div className="mt-1 font-mono text-[0.5rem] text-text-secondary/50 uppercase tracking-[0.05em]">
+                  {stat.label}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* Simple summary */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+          viewport={{ once: true }}
+          className="mt-6 font-mono text-[0.5rem] text-text-secondary/30 tracking-[0.1em] text-center"
+        >
+          {">"} all metrics sourced from on-chain + community data // updated every epoch
+        </motion.div>
+      </div>
+    </section>
   );
 }
 
@@ -176,84 +609,91 @@ export default function StatsSection() {
 
   const { scrollYProgress } = useScroll({
     target: sectionRef,
-    offset: ["start end", "end start"],
+    offset: ["start start", "end end"],
   });
 
-  // Tilt: flat → 40deg as you scroll through
-  const rotateX = useTransform(scrollYProgress, [0.15, 0.6], [0, 40]);
-  // Slight scale-down to enhance depth
-  const scale = useTransform(scrollYProgress, [0.15, 0.6], [1, 0.92]);
-  // Fade the surface slightly as it tilts away
-  const surfaceOpacity = useTransform(scrollYProgress, [0.15, 0.7], [1, 0.7]);
+  // Stats panel: slide out left + fade
+  const statsPanelX = useTransform(scrollYProgress, [0.1, 0.45], ["0%", "-100%"]);
+  const statsPanelOpacity = useTransform(scrollYProgress, [0.1, 0.4], [1, 0]);
+
+  // Logo: slide right → left
+  const logoX = useTransform(scrollYProgress, [0.1, 0.5], ["60vw", "5vw"]);
+  const logoScale = useTransform(scrollYProgress, [0.2, 0.5], [1, 0.85]);
+
+  // Floor matrix: slide in from right
+  const floorX = useTransform(scrollYProgress, [0.2, 0.5], ["100%", "0%"]);
+  const floorOpacity = useTransform(scrollYProgress, [0.2, 0.45], [0, 1]);
+
+  // Floor tilt
+  const floorRotateX = useTransform(scrollYProgress, [0.3, 0.6], [0, 50]);
+  const floorScale = useTransform(scrollYProgress, [0.3, 0.6], [1, 0.88]);
+
+  // For the ProgressionTrack fill
+  const progressFill = useTransform(scrollYProgress, [0.4, 0.8], [0, 1]);
+
+  // Reactive value for ProgressionTrack
+  const [progressValue, setProgressValue] = useState(0);
+  useMotionValueEvent(progressFill, "change", (v) => setProgressValue(v));
+
+  if (isMobile) return <MobileStats />;
 
   return (
     <section
       ref={sectionRef}
       id="stats"
-      className="relative py-24 md:py-36 overflow-hidden"
+      className="relative min-h-[250vh]"
     >
-      <div className="relative z-10 mx-auto max-w-7xl px-6">
-        {/* Section header — stays flat, outside perspective */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          viewport={{ once: true }}
-          className="mb-14"
-        >
-          <SectionLabel number="03" label="Impact Matrix" />
-          <h2 className="mt-4 font-display font-black text-3xl md:text-4xl tracking-tight">
-            <span className="text-text-primary">Network </span>
-            <span className="text-sol-green text-glow">Metrics</span>
-          </h2>
-          <p className="mt-2 font-mono text-[0.65rem] text-text-secondary/50 tracking-[0.1em]">
-            // REAL-TIME COMMUNITY DATA — LAST SYNC: {new Date().toISOString().split("T")[0]}
-          </p>
-        </motion.div>
+      {/* Sticky viewport container */}
+      <div className="sticky top-0 h-screen w-full overflow-hidden">
+        <div className="relative h-full w-full mx-auto max-w-[1400px]">
 
-        {/* Perspective container */}
-        <div style={{ perspective: isMobile ? "none" : "1200px" }}>
-          {/* Tilting surface */}
+          {/* ── Stats Panel (left side, slides out) ── */}
           <motion.div
+            className="absolute top-0 left-0 w-[40%] h-full z-20"
             style={{
-              rotateX: isMobile ? 0 : rotateX,
-              scale: isMobile ? 1 : scale,
-              opacity: isMobile ? 1 : surfaceOpacity,
-              transformOrigin: "center bottom",
-              transformStyle: "preserve-3d" as const,
+              x: statsPanelX,
+              opacity: statsPanelOpacity,
             }}
           >
-            {/* Surface decorations */}
-            <div className="relative p-6">
-              <GridSurface />
-              <CoordMarkers />
+            <StatsPanel />
+          </motion.div>
 
-              {/* Row 1: 3 stat cards */}
-              <div className="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-                {stats.slice(0, 3).map((stat, i) => (
-                  <StatCard key={stat.tag} stat={stat} index={i} />
-                ))}
-              </div>
+          {/* ── Logo Placeholder (slides right → left) ── */}
+          <motion.div
+            className="absolute top-0 h-full z-10"
+            style={{
+              x: logoX,
+              scale: logoScale,
+              width: "30%",
+            }}
+          >
+            <LogoPlaceholder />
+          </motion.div>
 
-              {/* Row 2: 2 stat cards, centered */}
-              <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 mt-4 md:mt-5 mx-auto max-w-[calc(66.666%+0.625rem)] lg:max-w-[calc(66.666%+0.625rem)]">
-                {stats.slice(3).map((stat, i) => (
-                  <StatCard key={stat.tag} stat={stat} index={i + 3} />
-                ))}
-              </div>
-
-              {/* Terminal footer */}
+          {/* ── Floor Matrix (slides in from right, tilts) ── */}
+          <motion.div
+            className="absolute top-[5%] right-0 w-[65%] h-[85%] z-[5]"
+            style={{
+              x: floorX,
+              opacity: floorOpacity,
+            }}
+          >
+            {/* Perspective wrapper */}
+            <div style={{ perspective: "1000px", width: "100%", height: "100%" }}>
               <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.8 }}
-                viewport={{ once: true }}
-                className="mt-8 font-mono text-[0.55rem] text-text-secondary/25 tracking-[0.1em] text-center"
+                className="relative w-full h-full"
+                style={{
+                  rotateX: floorRotateX,
+                  scale: floorScale,
+                  transformOrigin: "center bottom",
+                  transformStyle: "preserve-3d" as const,
+                }}
               >
-                {">"} all metrics sourced from on-chain + community data // updated every epoch
+                <NodeGrid scrollProgress={progressValue} />
               </motion.div>
             </div>
           </motion.div>
+
         </div>
       </div>
     </section>

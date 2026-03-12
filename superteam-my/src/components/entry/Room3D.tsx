@@ -1029,7 +1029,7 @@ export default function Room3D({ onEnter }: Room3DProps) {
   return (
     <div className="fixed inset-0 z-[100]">
       {/* Leva dev panel */}
-      <Leva collapsed={false} />
+      <Leva hidden />
 
       <Canvas
         camera={{ position: cfg.camStart, fov: 50 }}

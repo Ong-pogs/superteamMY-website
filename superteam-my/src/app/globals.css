@@ -243,6 +243,17 @@ body {
   to { opacity: 1; }
 }
 
+/* Stats section — slow-rotating logo placeholder */
+@keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.spin-slow { animation: spin-slow 20s linear infinite; }
+
+/* Stats section — pulsing node glow */
+@keyframes node-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(0, 255, 163, 0.2); }
+  50% { box-shadow: 0 0 20px rgba(0, 255, 163, 0.5), 0 0 40px rgba(0, 255, 163, 0.15); }
+}
+.node-pulse { animation: node-pulse 3s ease-in-out infinite; }
+
 .noise-overlay::before {
   content: '';
   position: absolute;

@@ -12,37 +12,39 @@ function lerp(a: number, b: number, t: number) {
   return a + (b - a) * t;
 }
 
-interface CrtBounds {
-  insetTop: number;
-  insetRight: number;
-  insetBottom: number;
-  insetLeft: number;
+interface CrtRect {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
 }
 
-// Padding in viewport % to shrink inward from measured edges
-const PADDING = 1.5;
-
-function getCrtBounds(): CrtBounds {
+function getCrtRect(): CrtRect {
   const el = document.getElementById("crt-screen-content");
-  if (!el) {
-    return { insetTop: 15, insetRight: 22, insetBottom: 22, insetLeft: 22 };
-  }
-  const rect = el.getBoundingClientRect();
   const vw = window.innerWidth;
   const vh = window.innerHeight;
+  if (!el) {
+    return { top: vh * 0.15, right: vw * 0.78, bottom: vh * 0.78, left: vw * 0.22 };
+  }
+  const rect = el.getBoundingClientRect();
+  // Shrink inward slightly so the reveal stays inside the glass
+  const pad = Math.min(vw, vh) * 0.015;
   return {
-    insetTop: (rect.top / vh) * 100 + PADDING,
-    insetRight: ((vw - rect.right) / vw) * 100 + PADDING,
-    insetBottom: ((vh - rect.bottom) / vh) * 100 + PADDING,
-    insetLeft: (rect.left / vw) * 100 + PADDING,
+    top: rect.top + pad,
+    right: rect.right - pad,
+    bottom: rect.bottom - pad,
+    left: rect.left + pad,
   };
+}
+
+function polyClip(l: number, t: number, r: number, b: number) {
+  return `polygon(${l}px ${t}px, ${r}px ${t}px, ${r}px ${b}px, ${l}px ${b}px)`;
 }
 
 export default function CinematicReveal({ onComplete, onReveal, siteRef }: CinematicRevealProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const slitRef = useRef<HTMLDivElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
-  // Store callbacks in refs so they don't cause re-runs
   const onRevealRef = useRef(onReveal);
   const onCompleteRef = useRef(onComplete);
   onRevealRef.current = onReveal;
@@ -53,49 +55,46 @@ export default function CinematicReveal({ onComplete, onReveal, siteRef }: Cinem
     if (!siteEl) return;
 
     let cancelled = false;
+    const crt = getCrtRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const crtH = crt.bottom - crt.top;
 
-    const bounds = getCrtBounds();
-
-    siteEl.style.position = "fixed";
-    siteEl.style.inset = "0";
-    siteEl.style.zIndex = "200";
-    siteEl.style.clipPath = `inset(${bounds.insetTop}% ${100 - bounds.insetLeft}% ${bounds.insetBottom}% ${bounds.insetLeft}%)`;
+    // Start fully clipped (zero-width polygon at left edge of CRT)
+    siteEl.style.clipPath = polyClip(crt.left, crt.top, crt.left, crt.bottom);
 
     onRevealRef.current();
 
-    const crtTop = bounds.insetTop;
-    const crtH = 100 - bounds.insetTop - bounds.insetBottom;
-    const crtLeft = bounds.insetLeft;
-    const crtRight = 100 - bounds.insetRight;
-
-    // ── Wipe phase ──
+    // ── Wipe: right edge sweeps from crt.left → crt.right ──
     let wipeStart = 0;
     const wipeDuration = 800;
 
     const wipe = (now: number) => {
       if (cancelled) return;
       if (!wipeStart) wipeStart = now;
-      const elapsed = now - wipeStart;
-      const p = Math.min(elapsed / wipeDuration, 1);
+      const p = Math.min((now - wipeStart) / wipeDuration, 1);
       const eased = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
 
-      const rightInset = lerp(100 - bounds.insetLeft, bounds.insetRight, eased);
-      siteEl.style.clipPath = `inset(${bounds.insetTop}% ${rightInset}% ${bounds.insetBottom}% ${bounds.insetLeft}%)`;
+      const r = lerp(crt.left, crt.right, eased);
+      siteEl.style.clipPath = polyClip(crt.left, crt.top, r, crt.bottom);
 
-      const slitX = 100 - rightInset;
+      // Slit line
       if (slitRef.current) {
-        const visible = slitX > crtLeft + 0.5 && slitX < crtRight - 0.5;
-        slitRef.current.style.display = visible ? "block" : "none";
-        slitRef.current.style.left = `${slitX}%`;
-        slitRef.current.style.top = `${crtTop}%`;
-        slitRef.current.style.height = `${crtH}%`;
+        const show = r > crt.left + 2 && r < crt.right - 2;
+        slitRef.current.style.display = show ? "block" : "none";
+        slitRef.current.style.left = `${r}px`;
+        slitRef.current.style.top = `${crt.top}px`;
+        slitRef.current.style.height = `${crtH}px`;
       }
+      // Glow trail
       if (glowRef.current) {
-        const visible = slitX > crtLeft + 2 && slitX < crtRight - 0.5;
-        glowRef.current.style.display = visible ? "block" : "none";
-        glowRef.current.style.left = `${Math.max(crtLeft, slitX - 5)}%`;
-        glowRef.current.style.top = `${crtTop}%`;
-        glowRef.current.style.height = `${crtH}%`;
+        const gw = vw * 0.04;
+        const show = r > crt.left + gw && r < crt.right - 2;
+        glowRef.current.style.display = show ? "block" : "none";
+        glowRef.current.style.left = `${r - gw}px`;
+        glowRef.current.style.top = `${crt.top}px`;
+        glowRef.current.style.height = `${crtH}px`;
+        glowRef.current.style.width = `${gw}px`;
       }
 
       if (p < 1) {
@@ -107,37 +106,37 @@ export default function CinematicReveal({ onComplete, onReveal, siteRef }: Cinem
       }
     };
 
-    // ── Expand phase ──
+    // ── Expand: CRT rect → full viewport ──
     let expandStart = 0;
     const expandDuration = 600;
 
     const expand = (now: number) => {
       if (cancelled) return;
       if (!expandStart) expandStart = now;
-      const elapsed = now - expandStart;
-      const p = Math.min(elapsed / expandDuration, 1);
+      const p = Math.min((now - expandStart) / expandDuration, 1);
       const eased = 1 - Math.pow(1 - p, 3);
 
-      const t = lerp(bounds.insetTop, 0, eased);
-      const r = lerp(bounds.insetRight, 0, eased);
-      const b = lerp(bounds.insetBottom, 0, eased);
-      const l = lerp(bounds.insetLeft, 0, eased);
+      const l = lerp(crt.left, 0, eased);
+      const t = lerp(crt.top, 0, eased);
+      const r = lerp(crt.right, vw, eased);
+      const b = lerp(crt.bottom, vh, eased);
 
-      siteEl.style.clipPath = `inset(${t}% ${r}% ${b}% ${l}%)`;
+      siteEl.style.clipPath = polyClip(l, t, r, b);
 
       if (p < 1) {
         requestAnimationFrame(expand);
       } else {
-        siteEl.style.position = "";
-        siteEl.style.inset = "";
-        siteEl.style.zIndex = "";
+        // Full viewport reached — remove clip-path
         siteEl.style.clipPath = "";
         if (containerRef.current) containerRef.current.style.display = "none";
         onCompleteRef.current();
       }
     };
 
-    requestAnimationFrame(wipe);
+    // Wait one frame for the onReveal re-render to paint, then start
+    requestAnimationFrame(() => {
+      if (!cancelled) requestAnimationFrame(wipe);
+    });
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -145,29 +144,7 @@ export default function CinematicReveal({ onComplete, onReveal, siteRef }: Cinem
 
   return (
     <div ref={containerRef} className="fixed inset-0 z-[250] pointer-events-none">
-
-      {/* ── DEBUG: Phase indicator ── */}
-      <div
-        style={{
-          position: "absolute",
-          top: 12,
-          left: "50%",
-          transform: "translateX(-50%)",
-          padding: "4px 16px",
-          background: "rgba(0,0,0,0.9)",
-          color: "#ff0",
-          fontSize: 14,
-          fontFamily: "monospace",
-          fontWeight: "bold",
-          borderRadius: 4,
-          zIndex: 99999,
-          border: "2px solid #ff0",
-        }}
-      >
-        CINEMATIC REVEAL
-      </div>
-
-      {/* ═══ GREEN WIPE LINE — positioned via ref, no React state ═══ */}
+      {/* Green wipe line */}
       <div
         ref={slitRef}
         style={{
@@ -178,26 +155,16 @@ export default function CinematicReveal({ onComplete, onReveal, siteRef }: Cinem
           boxShadow: "0 0 20px 6px rgba(0,255,163,0.35), 0 0 60px 12px rgba(0,255,163,0.15)",
           transform: "translateX(-50%)",
         }}
-      >
-        <div style={{ position: "absolute", top: 4, left: 8, padding: "2px 8px", background: "rgba(0,0,0,0.85)", color: "#00ff00", fontSize: 11, fontFamily: "monospace", fontWeight: "bold", borderRadius: 3, border: "1px solid #00ff00", whiteSpace: "nowrap" }}>
-          SLIT LINE
-        </div>
-      </div>
-
-      {/* ═══ GREEN GLOW TRAIL — positioned via ref, no React state ═══ */}
+      />
+      {/* Green glow trail */}
       <div
         ref={glowRef}
         style={{
           position: "absolute",
           display: "none",
-          width: "5%",
           background: "linear-gradient(to right, transparent, rgba(0,255,163,0.06))",
         }}
-      >
-        <div style={{ position: "absolute", top: 30, left: 8, padding: "2px 8px", background: "rgba(0,0,0,0.85)", color: "#00ff88", fontSize: 11, fontFamily: "monospace", fontWeight: "bold", borderRadius: 3, border: "1px solid #00ff88", whiteSpace: "nowrap" }}>
-          GLOW TRAIL
-        </div>
-      </div>
+      />
     </div>
   );
 }
