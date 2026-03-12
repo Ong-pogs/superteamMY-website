@@ -72,8 +72,9 @@ src/app/api/revalidate/route.ts — POST ISR revalidation with secret token
 
 ### 3D Entry Experience
 ```
-src/components/entry/Room3D.tsx           — 3D scene with IBM PC GLB model, camera zoom, click-to-enter
-src/components/entry/EntryTransition.tsx  — Lazy-loads Room3D on desktop, 2D fallback on mobile (<768px)
+src/components/entry/Room3D.tsx           — 3D scene with IBM PC GLB model, camera zoom, click-to-enter; ScreenTerminal has id="crt-screen-content"; Leva panel hidden
+src/components/entry/EntryTransition.tsx  — Lazy-loads Room3D on desktop, 2D fallback on mobile (<768px); passes siteRef to CinematicReveal
+src/components/entry/CinematicReveal.tsx  — Slit-wipe transition: green slit sweeps CRT screen, then CRT expands to fill viewport; pixel clip-path via rAF, no React state during animation
 ```
 
 ### Hero Section
@@ -287,7 +288,7 @@ Dev server runs on http://localhost:3000. Build with `npx next build`.
 
 ## NEXT STEPS (from original spec build order)
 
-### Completed (steps 1-12):
+### Completed (steps 1-12, 14-15 + CinematicReveal):
 - [x] 1. Scaffold — Next.js + Tailwind + TypeScript + fonts + color vars + base layout
 - [x] 2. UI Components — CRTFrame, ScanlineOverlay, SectionLabel, Badge, SkillTag, Crosshair, BinaryStream
 - [x] 3. Hero Section — Shift5 layout, System Status, LanguageSwap
@@ -300,7 +301,7 @@ Dev server runs on http://localhost:3000. Build with `npx next build`.
 - [x] 10. Join CTA — Valorant dramatic typography
 - [x] 11. Footer
 - [x] 12. Left Rail Navigator
-- [x] 14. 3D Room Entry — R3F scene with IBM PC GLB model
+- [x] 14. 3D Room Entry — R3F scene with IBM PC GLB model + CinematicReveal slit-wipe transition (COMPLETE)
 - [x] 15. Members Page — /members directory with search + filters
 
 ### Still TODO:
@@ -323,9 +324,17 @@ Dev server runs on http://localhost:3000. Build with `npx next build`.
 ### Page Flow
 1. User visits `/` → `EntryTransition` mounts
 2. Desktop: lazy-loads `Room3D` (3D scene with IBM PC model in dark room)
-3. User clicks PC → camera zooms into screen → green flash → `onComplete` fires
-4. `page.tsx` sets `entered=true` → all sections render, Navbar + LeftRail appear
-5. Hero section plays boot sequence animation (typing lines), then reveals content
+3. User clicks PC → camera zooms into screen → `onEnter()` callback fires
+4. `CinematicReveal` begins: green slit sweeps left→right across the CRT screen (measured via `getBoundingClientRect` on `id="crt-screen-content"`). 3D room remains fully visible around the CRT during the wipe.
+5. After slit wipe: CRT area expands (clip-path grows) to fill entire viewport, covering the 3D room.
+6. `onComplete` fires → `page.tsx` sets `entered=true` → all sections render, Navbar + LeftRail appear
+7. Hero section plays boot sequence animation (typing lines), then reveals content
+
+**Layout stack during transition:**
+- `siteRef` outer wrapper: `position: relative; z-index: 200; background: transparent` — 3D canvas shows through outside the clip-path region
+- Inner div: `background: #0A0A0F` — only visible inside the clip-path region
+- All animation: rAF + direct DOM style mutations (no React state changes during animation)
+- React 18 Strict Mode: handled via local `cancelled` flag (not mountedRef)
 
 ### Component Pattern
 - All components are `"use client"` (needed for hooks, framer-motion, interactivity)
@@ -343,7 +352,8 @@ Dev server runs on http://localhost:3000. Build with `npx next build`.
 - Dust particles: BufferGeometry with manual position attribute
 - Camera: idle gentle sway → on click: cubic ease-out zoom + FOV narrowing
 - Click detection: invisible box mesh with onPointerOver/Out for cursor + hover state
-- Transition: green-tinted flash div with CSS `fadeOut` animation → `onEnter()` callback
+- ScreenTerminal DOM element has `id="crt-screen-content"` so `CinematicReveal` can measure its bounds via `getBoundingClientRect`
+- Transition: `onEnter()` callback fires → `CinematicReveal` runs slit-wipe then viewport-fill (old green-flash div approach replaced)
 
 ### Data Flow (current — all mock)
 - Sections have hardcoded arrays (MOCK_MEMBERS, MOCK_PARTNERS, MOCK_TWEETS, FAQ_DATA)

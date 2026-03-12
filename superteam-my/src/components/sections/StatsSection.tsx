@@ -1,7 +1,10 @@
 "use client";
 
-import { useRef, useState, useMemo, useEffect } from "react";
-import { motion, useScroll, useTransform, useMotionValueEvent } from "framer-motion";
+import { useState, useMemo, Suspense, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { useGLTF } from "@react-three/drei";
+import * as THREE from "three";
 import { cn } from "@/lib/utils";
 import SectionLabel from "@/components/ui/SectionLabel";
 import Counter from "@/components/ui/Counter";
@@ -97,11 +100,49 @@ function nodeCenter(tag: string): { x: number; y: number } {
   return { x: 50, y: 50 };
 }
 
-// ─── StatsPanel (left side, initial state) ───────────────
+// ─── TabBar ──────────────────────────────────────────────
 
-function StatsPanel() {
+function TabBar({ mode, onSwitch }: { mode: "overview" | "matrix"; onSwitch: (m: "overview" | "matrix") => void }) {
   return (
-    <div className="flex flex-col justify-center h-full px-4 md:px-8 lg:px-12">
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      viewport={{ once: true }}
+      className="flex items-center gap-1 mb-8 font-mono text-[0.65rem] tracking-[0.1em]"
+    >
+      <button
+        onClick={() => onSwitch("overview")}
+        className={cn(
+          "px-3 py-1.5 border transition-colors duration-200 cursor-pointer",
+          mode === "overview"
+            ? "border-sol-green/40 text-sol-green bg-sol-green/5"
+            : "border-border-dim text-text-secondary/50 hover:text-text-secondary hover:border-border-dim/80",
+        )}
+      >
+        [{mode === "overview" ? "■" : "□"} OVERVIEW]
+      </button>
+      <button
+        onClick={() => onSwitch("matrix")}
+        className={cn(
+          "px-3 py-1.5 border transition-colors duration-200 cursor-pointer",
+          mode === "matrix"
+            ? "border-sol-green/40 text-sol-green bg-sol-green/5"
+            : "border-border-dim text-text-secondary/50 hover:text-text-secondary hover:border-border-dim/80",
+        )}
+      >
+        [{mode === "matrix" ? "■" : "□"} MATRIX]
+      </button>
+      <span className="ml-4 text-text-secondary/30">// 03. Impact Matrix</span>
+    </motion.div>
+  );
+}
+
+// ─── StatsPanel (overview left side) ─────────────────────
+
+function StatsPanel({ onSwitchToMatrix }: { onSwitchToMatrix: () => void }) {
+  return (
+    <div className="flex flex-col justify-center px-4 md:px-8 lg:px-12">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -152,70 +193,139 @@ function StatsPanel() {
         })}
       </div>
 
-      {/* Terminal status */}
-      <motion.div
+      {/* CTA button */}
+      <motion.button
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.6 }}
         viewport={{ once: true }}
-        className="mt-8 font-mono text-[0.55rem] text-sol-green/30 tracking-[0.1em]"
+        onClick={onSwitchToMatrix}
+        className="mt-8 font-mono text-[0.65rem] text-sol-green/50 tracking-[0.1em] text-left cursor-pointer
+                   hover:text-sol-green transition-colors duration-200 group"
       >
-        {">"} matrix_scan: <span className="text-sol-green/60">ready</span>
+        {">"} <span className="group-hover:text-sol-green">execute matrix_scan_</span>
         <span className="cursor-blink ml-1">_</span>
-      </motion.div>
+      </motion.button>
     </div>
   );
 }
 
-// ─── LogoPlaceholder (slides right → left) ───────────────
+// ─── 3D Logo Model ───────────────────────────────────────
 
-function LogoPlaceholder() {
+const LOGO_GLB_PATH = "/models/solana_logo.glb";
+
+function LogoModel() {
+  const { scene } = useGLTF(LOGO_GLB_PATH);
+  const ref = useRef<THREE.Group>(null);
+
+  // Auto-rotate
+  useFrame((_, delta) => {
+    if (ref.current) ref.current.rotation.y += delta * 0.4;
+  });
+
+  return (
+    <group ref={ref}>
+      <primitive object={scene} scale={1.5} />
+    </group>
+  );
+}
+
+function LogoFallback({ compact }: { compact?: boolean }) {
+  return (
+    <div className="relative flex flex-col items-center justify-center h-full">
+      <div className={cn(
+        "absolute rounded-full border border-dashed border-sol-green/15",
+        compact ? "w-32 h-32 md:w-40 md:h-40" : "w-48 h-48 md:w-64 md:h-64",
+      )} />
+      <div className={cn(
+        "relative border-2 border-dashed border-sol-green/25 rounded-xl flex items-center justify-center",
+        compact ? "w-24 h-24 md:w-32 md:h-32" : "w-36 h-36 md:w-48 md:h-48",
+      )}>
+        <svg
+          className={cn("spin-slow", compact ? "w-14 h-14 md:w-20 md:h-20" : "w-20 h-20 md:w-28 md:h-28")}
+          viewBox="0 0 100 100"
+          fill="none"
+        >
+          <path d="M50 5 L90 30 L50 55 L10 30 Z" stroke="rgba(0,255,163,0.4)" strokeWidth="1.5" fill="none" />
+          <path d="M50 25 L90 50 L50 75 L10 50 Z" stroke="rgba(0,255,163,0.25)" strokeWidth="1" fill="none" />
+          <path d="M50 45 L90 70 L50 95 L10 70 Z" stroke="rgba(0,255,163,0.15)" strokeWidth="1" fill="none" />
+        </svg>
+      </div>
+      <div className={cn(
+        "mt-6 font-mono text-text-secondary/40 tracking-[0.15em] text-center",
+        compact ? "text-[0.45rem]" : "text-[0.55rem]",
+      )}>
+        // 3D_ASSET :: LOADING
+      </div>
+    </div>
+  );
+}
+
+// Check once whether the GLB file exists
+let _glbStatus: "unknown" | "found" | "missing" = "unknown";
+let _glbPromise: Promise<void> | null = null;
+
+function useLogoGLBAvailable() {
+  const [available, setAvailable] = useState(_glbStatus === "found");
+
+  useEffect(() => {
+    if (_glbStatus === "found") { setAvailable(true); return; }
+    if (_glbStatus === "missing") { setAvailable(false); return; }
+
+    if (!_glbPromise) {
+      _glbPromise = fetch(LOGO_GLB_PATH, { method: "HEAD" })
+        .then((res) => { _glbStatus = res.ok ? "found" : "missing"; })
+        .catch(() => { _glbStatus = "missing"; });
+    }
+    _glbPromise.then(() => setAvailable(_glbStatus === "found"));
+  }, []);
+
+  return available;
+}
+
+function Logo3DViewer({ compact }: { compact?: boolean }) {
+  const glbAvailable = useLogoGLBAvailable();
+  const size = compact ? "h-48 md:h-56" : "h-64 md:h-80";
+
+  // If GLB doesn't exist, show SVG fallback
+  if (!glbAvailable) return <LogoFallback compact={compact} />;
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       whileInView={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.6 }}
       viewport={{ once: true }}
-      className="relative flex flex-col items-center justify-center h-full"
+      className={cn("relative w-full flex flex-col items-center justify-center", size)}
     >
-      {/* Circular platform ring */}
-      <div className="absolute w-48 h-48 md:w-64 md:h-64 rounded-full border border-dashed border-sol-green/15" />
-      <div className="absolute w-56 h-56 md:w-72 md:h-72 rounded-full border border-sol-green/8" />
+      {/* Dashed ring decoration */}
+      <div className={cn(
+        "absolute rounded-full border border-dashed border-sol-green/15 pointer-events-none",
+        compact ? "w-40 h-40 md:w-48 md:h-48" : "w-56 h-56 md:w-72 md:h-72",
+      )} />
 
-      {/* Dashed container */}
-      <div className="relative w-36 h-36 md:w-48 md:h-48 border-2 border-dashed border-sol-green/25 rounded-xl flex items-center justify-center">
-        {/* Rotating Solana SVG outline */}
-        <svg
-          className="spin-slow w-20 h-20 md:w-28 md:h-28"
-          viewBox="0 0 100 100"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
+      {/* R3F Canvas */}
+      <div className={cn("relative", compact ? "w-40 h-40 md:w-48 md:h-48" : "w-56 h-56 md:w-64 md:h-64")}>
+        <Canvas
+          camera={{ position: [0, 0, 4], fov: 45 }}
+          style={{ background: "transparent" }}
+          gl={{ alpha: true, antialias: true }}
         >
-          {/* Simplified Solana-inspired diamond/rhombus */}
-          <path
-            d="M50 5 L90 30 L50 55 L10 30 Z"
-            stroke="rgba(0,255,163,0.4)"
-            strokeWidth="1.5"
-            fill="none"
-          />
-          <path
-            d="M50 25 L90 50 L50 75 L10 50 Z"
-            stroke="rgba(0,255,163,0.25)"
-            strokeWidth="1"
-            fill="none"
-          />
-          <path
-            d="M50 45 L90 70 L50 95 L10 70 Z"
-            stroke="rgba(0,255,163,0.15)"
-            strokeWidth="1"
-            fill="none"
-          />
-        </svg>
+          <ambientLight intensity={0.3} />
+          <pointLight position={[2, 2, 3]} intensity={1} color="#00FFA3" />
+          <pointLight position={[-2, -1, 2]} intensity={0.4} color="#9945FF" />
+          <Suspense fallback={null}>
+            <LogoModel />
+          </Suspense>
+        </Canvas>
       </div>
 
       {/* Label */}
-      <div className="mt-6 font-mono text-[0.55rem] text-text-secondary/40 tracking-[0.15em] text-center">
-        // 3D_ASSET :: PENDING
+      <div className={cn(
+        "mt-4 font-mono text-text-secondary/40 tracking-[0.15em] text-center",
+        compact ? "text-[0.45rem]" : "text-[0.55rem]",
+      )}>
+        // SUPERTEAM_MY :: ACTIVE
       </div>
     </motion.div>
   );
@@ -415,42 +525,35 @@ function FloorGrid() {
   );
 }
 
-// ─── ProgressionTrack ────────────────────────────────────
+// ─── ProgressionTrack (static — all milestones shown) ────
 
-function ProgressionTrack({ scrollProgress }: { scrollProgress: number }) {
+function ProgressionTrack() {
   return (
     <div className="absolute bottom-4 left-4 right-4 z-20">
       <div className="relative flex items-center justify-between">
         {/* Background line */}
         <div className="absolute left-0 right-0 top-1/2 h-px bg-border-dim" />
-        {/* Animated fill line */}
+        {/* Static fill line — fills up to last "done" milestone */}
         <div
-          className="absolute left-0 top-1/2 h-px bg-sol-green/40 transition-all duration-300"
-          style={{ width: `${Math.min(scrollProgress * 120, 100)}%` }}
+          className="absolute left-0 top-1/2 h-px bg-sol-green/40"
+          style={{ width: `${((milestones.filter((m) => m.done).length - 1) / (milestones.length - 1)) * 100}%` }}
         />
         {/* Milestone dots */}
-        {milestones.map((m, i) => {
-          const fillProgress = scrollProgress * 120;
-          const dotPosition = (i / (milestones.length - 1)) * 100;
-          const isReached = fillProgress >= dotPosition;
-          return (
-            <div key={m.label} className="relative z-10 flex flex-col items-center">
-              <div
-                className={cn(
-                  "w-2.5 h-2.5 rounded-full border transition-colors duration-300",
-                  isReached && m.done
-                    ? "bg-sol-green/80 border-sol-green/60"
-                    : m.done
-                      ? "bg-sol-green/30 border-sol-green/30"
-                      : "bg-transparent border-border-dim",
-                )}
-              />
-              <span className="mt-1.5 font-mono text-[0.4rem] text-text-secondary/40 tracking-[0.05em] whitespace-nowrap">
-                {m.label}
-              </span>
-            </div>
-          );
-        })}
+        {milestones.map((m) => (
+          <div key={m.label} className="relative z-10 flex flex-col items-center">
+            <div
+              className={cn(
+                "w-2.5 h-2.5 rounded-full border",
+                m.done
+                  ? "bg-sol-green/80 border-sol-green/60"
+                  : "bg-transparent border-border-dim",
+              )}
+            />
+            <span className="mt-1.5 font-mono text-[0.4rem] text-text-secondary/40 tracking-[0.05em] whitespace-nowrap">
+              {m.label}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -458,7 +561,7 @@ function ProgressionTrack({ scrollProgress }: { scrollProgress: number }) {
 
 // ─── NodeGrid (tilted floor with all nodes) ──────────────
 
-function NodeGrid({ scrollProgress }: { scrollProgress: number }) {
+function NodeGrid() {
   const [hoveredParent, setHoveredParent] = useState<string | null>(null);
 
   // Build satellite color lookup from parent
@@ -525,8 +628,67 @@ function NodeGrid({ scrollProgress }: { scrollProgress: number }) {
       ))}
 
       {/* Progression track */}
-      <ProgressionTrack scrollProgress={scrollProgress} />
+      <ProgressionTrack />
     </div>
+  );
+}
+
+// ─── OverviewView ────────────────────────────────────────
+
+function OverviewView({ onSwitchToMatrix }: { onSwitchToMatrix: () => void }) {
+  return (
+    <motion.div
+      key="overview"
+      initial={{ x: "-100%" }}
+      animate={{ x: 0 }}
+      exit={{ x: "-100%" }}
+      transition={{ duration: 0.4, ease: "easeInOut" as const }}
+      className="flex flex-col md:flex-row gap-8 md:gap-12 min-h-[500px]"
+    >
+      {/* Left: StatsPanel */}
+      <div className="flex-1 md:w-1/2">
+        <StatsPanel onSwitchToMatrix={onSwitchToMatrix} />
+      </div>
+      {/* Right: 3D Logo */}
+      <div className="flex-1 md:w-1/2 flex items-center justify-center">
+        <Logo3DViewer />
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── MatrixView ──────────────────────────────────────────
+
+function MatrixView() {
+  return (
+    <motion.div
+      key="matrix"
+      initial={{ x: "100%" }}
+      animate={{ x: 0 }}
+      exit={{ x: "100%" }}
+      transition={{ duration: 0.45, ease: "easeInOut" as const }}
+      className="flex flex-col md:flex-row gap-8 min-h-[500px]"
+    >
+      {/* Left: compact 3D Logo */}
+      <div className="hidden md:flex md:w-[30%] items-center justify-center">
+        <Logo3DViewer compact />
+      </div>
+      {/* Right: NodeGrid with perspective tilt */}
+      <div className="flex-1 md:w-[70%]">
+        <div style={{ perspective: "1000px", width: "100%", height: "100%" }}>
+          <div
+            className="relative w-full h-full min-h-[500px]"
+            style={{
+              transform: "rotateX(30deg) scale(0.92)",
+              transformOrigin: "center bottom",
+              transformStyle: "preserve-3d",
+            }}
+          >
+            <NodeGrid />
+          </div>
+        </div>
+      </div>
+    </motion.div>
   );
 }
 
@@ -604,98 +766,24 @@ function MobileStats() {
 // ─── Main Section ────────────────────────────────────────
 
 export default function StatsSection() {
-  const sectionRef = useRef<HTMLElement>(null);
+  const [mode, setMode] = useState<"overview" | "matrix">("overview");
   const isMobile = useMediaQuery("(max-width: 768px)");
-
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start start", "end end"],
-  });
-
-  // Stats panel: slide out left + fade
-  const statsPanelX = useTransform(scrollYProgress, [0.1, 0.45], ["0%", "-100%"]);
-  const statsPanelOpacity = useTransform(scrollYProgress, [0.1, 0.4], [1, 0]);
-
-  // Logo: slide right → left
-  const logoX = useTransform(scrollYProgress, [0.1, 0.5], ["60vw", "5vw"]);
-  const logoScale = useTransform(scrollYProgress, [0.2, 0.5], [1, 0.85]);
-
-  // Floor matrix: slide in from right
-  const floorX = useTransform(scrollYProgress, [0.2, 0.5], ["100%", "0%"]);
-  const floorOpacity = useTransform(scrollYProgress, [0.2, 0.45], [0, 1]);
-
-  // Floor tilt
-  const floorRotateX = useTransform(scrollYProgress, [0.3, 0.6], [0, 50]);
-  const floorScale = useTransform(scrollYProgress, [0.3, 0.6], [1, 0.88]);
-
-  // For the ProgressionTrack fill
-  const progressFill = useTransform(scrollYProgress, [0.4, 0.8], [0, 1]);
-
-  // Reactive value for ProgressionTrack
-  const [progressValue, setProgressValue] = useState(0);
-  useMotionValueEvent(progressFill, "change", (v) => setProgressValue(v));
 
   if (isMobile) return <MobileStats />;
 
   return (
-    <section
-      ref={sectionRef}
-      id="stats"
-      className="relative min-h-[250vh]"
-    >
-      {/* Sticky viewport container */}
-      <div className="sticky top-0 h-screen w-full overflow-hidden">
-        <div className="relative h-full w-full mx-auto max-w-[1400px]">
-
-          {/* ── Stats Panel (left side, slides out) ── */}
-          <motion.div
-            className="absolute top-0 left-0 w-[40%] h-full z-20"
-            style={{
-              x: statsPanelX,
-              opacity: statsPanelOpacity,
-            }}
-          >
-            <StatsPanel />
-          </motion.div>
-
-          {/* ── Logo Placeholder (slides right → left) ── */}
-          <motion.div
-            className="absolute top-0 h-full z-10"
-            style={{
-              x: logoX,
-              scale: logoScale,
-              width: "30%",
-            }}
-          >
-            <LogoPlaceholder />
-          </motion.div>
-
-          {/* ── Floor Matrix (slides in from right, tilts) ── */}
-          <motion.div
-            className="absolute top-[5%] right-0 w-[65%] h-[85%] z-[5]"
-            style={{
-              x: floorX,
-              opacity: floorOpacity,
-            }}
-          >
-            {/* Perspective wrapper */}
-            <div style={{ perspective: "1000px", width: "100%", height: "100%" }}>
-              <motion.div
-                className="relative w-full h-full"
-                style={{
-                  rotateX: floorRotateX,
-                  scale: floorScale,
-                  transformOrigin: "center bottom",
-                  transformStyle: "preserve-3d" as const,
-                }}
-              >
-                <NodeGrid scrollProgress={progressValue} />
-              </motion.div>
-            </div>
-          </motion.div>
-
-        </div>
+    <section id="stats" className="relative py-24 md:py-36 overflow-hidden">
+      <div className="mx-auto max-w-7xl px-6">
+        <TabBar mode={mode} onSwitch={setMode} />
+        <AnimatePresence mode="wait">
+          {mode === "overview" ? (
+            <OverviewView key="overview" onSwitchToMatrix={() => setMode("matrix")} />
+          ) : (
+            <MatrixView key="matrix" />
+          )}
+        </AnimatePresence>
       </div>
     </section>
   );
 }
+
