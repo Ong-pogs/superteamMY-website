@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { useState, useEffect, useRef, useSyncExternalStore, useCallback } from "react";
+import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
+import { Volume2, VolumeX } from "lucide-react";
 import LanguageSwap from "./LanguageSwap";
 import SystemStatus from "./SystemStatus";
 import MalaysiaMap from "./MalaysiaMap";
+import * as radioAudio from "@/lib/radioAudio";
 
 interface HeroSectionProps {
   revealing?: boolean;
@@ -25,6 +27,18 @@ export default function HeroSection({ revealing = false, entered = false }: Hero
   }, [entered]);
 
 
+  // Radio audio state — survives Room3D unmount
+  const radioPlaying = useSyncExternalStore(
+    radioAudio.subscribe,
+    radioAudio.isPlaying,
+    () => false, // SSR snapshot
+  );
+  const [radioWasPlayed, setRadioWasPlayed] = useState(false);
+  useEffect(() => {
+    if (radioPlaying) setRadioWasPlayed(true);
+  }, [radioPlaying]);
+  const toggleRadio = useCallback(() => radioAudio.toggle(), []);
+
   const ease = [0.16, 1, 0.3, 1] as const;
 
   // Parallax for community photo
@@ -44,35 +58,6 @@ export default function HeroSection({ revealing = false, entered = false }: Hero
         transition: "background 0.8s ease",
       }}
     >
-      {/* CRT screen cover — dark phosphor surface, drops away to reveal panels */}
-      <div className="fixed inset-0 overflow-hidden z-50 pointer-events-none">
-        <motion.div
-          className="absolute inset-0"
-          style={{
-            background: "#000000",
-          }}
-          initial={{ y: "0%" }}
-          animate={phase >= 1 ? { y: "100%" } : {}}
-          transition={{ duration: 1.8, delay: 0.1, ease }}
-        >
-          {/* Scanlines on cover */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background: "repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px)",
-            }}
-          />
-          {/* No phosphor glow — keep pure black to match 3D CRT */}
-          {/* Vignette — heavy edges like CRT tube */}
-          <div
-            className="absolute inset-0"
-            style={{
-              boxShadow: "inset 0 0 250px 100px rgba(0,0,0,0.7)",
-            }}
-          />
-        </motion.div>
-      </div>
-
       <div className="relative flex flex-col lg:flex-row">
 
         {/* ── Left column (scrollable) ── */}
@@ -90,6 +75,28 @@ export default function HeroSection({ revealing = false, entered = false }: Hero
             {/* Subtle noise texture */}
             <div className="noise-overlay absolute inset-0 opacity-[0.03]" />
 
+            {/* Radio mute/unmute button — only shows if user played the radio */}
+            <AnimatePresence>
+              {radioWasPlayed && phase >= 2 && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.3 }}
+                  onClick={toggleRadio}
+                  className="absolute top-6 right-6 z-10 flex items-center gap-2 px-3 py-2 border border-sol-green/30 bg-bg-terminal/80 backdrop-blur-sm font-mono text-[0.6rem] uppercase tracking-[0.15em] text-sol-green hover:border-sol-green/60 hover:bg-sol-green/10 transition-colors duration-200 cursor-pointer"
+                  title={radioPlaying ? "Mute radio" : "Unmute radio"}
+                >
+                  {radioPlaying ? (
+                    <Volume2 className="h-3.5 w-3.5" />
+                  ) : (
+                    <VolumeX className="h-3.5 w-3.5" />
+                  )}
+                  <span>{radioPlaying ? "RADIO ON" : "RADIO OFF"}</span>
+                </motion.button>
+              )}
+            </AnimatePresence>
+
             {/* Text container — centered-low, like Shift5 */}
             <div className="relative h-full flex flex-col justify-center px-6 sm:px-10 md:px-14 lg:px-16 xl:px-20 pt-24 lg:pt-[20vh]">
               {/* Text + subtitle wrapper for relative positioning */}
@@ -97,7 +104,7 @@ export default function HeroSection({ revealing = false, entered = false }: Hero
                 {/* SUPER// — masked slide-up with animated grain texture */}
                 <div className="overflow-hidden">
                   <motion.h1
-                    className="font-display font-black leading-[0.85] hero-text-grain"
+                    className="font-display font-black leading-[0.85]"
                     style={{
                       fontSize: "clamp(3.5rem, 13vw, 13rem)",
                       background: "linear-gradient(135deg, #9945FF 0%, #14F195 100%)",
@@ -105,8 +112,8 @@ export default function HeroSection({ revealing = false, entered = false }: Hero
                       WebkitTextFillColor: "transparent",
                       backgroundClip: "text",
                     }}
-                    initial={{ y: "110%" }}
-                    animate={phase >= 2 ? { y: "0%" } : {}}
+                    initial={{ y: "110%", opacity: 0 }}
+                    animate={phase >= 2 ? { y: "0%", opacity: 1 } : {}}
                     transition={{ duration: 0.8, ease }}
                   >
                     SUPER<span style={{ opacity: 0.3 }}>//</span>
@@ -116,7 +123,7 @@ export default function HeroSection({ revealing = false, entered = false }: Hero
                 {/* TEAM — masked slide-up (staggered) */}
                 <div className="overflow-hidden">
                   <motion.h1
-                    className="font-display font-black leading-[0.85] hero-text-grain"
+                    className="font-display font-black leading-[0.85]"
                     style={{
                       fontSize: "clamp(3.5rem, 13vw, 13rem)",
                       background: "linear-gradient(135deg, #9945FF 0%, #14F195 100%)",
@@ -124,8 +131,8 @@ export default function HeroSection({ revealing = false, entered = false }: Hero
                       WebkitTextFillColor: "transparent",
                       backgroundClip: "text",
                     }}
-                    initial={{ y: "110%" }}
-                    animate={phase >= 2 ? { y: "0%" } : {}}
+                    initial={{ y: "110%", opacity: 0 }}
+                    animate={phase >= 2 ? { y: "0%", opacity: 1 } : {}}
                     transition={{ duration: 0.8, delay: 0.1, ease }}
                   >
                     TEAM

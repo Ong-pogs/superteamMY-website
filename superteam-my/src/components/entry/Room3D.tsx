@@ -3,7 +3,6 @@
 import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
-import { Leva, useControls } from "leva";
 import * as THREE from "three";
 
 // ─── Types ────────────────────────────────────────────────
@@ -575,9 +574,15 @@ function Radio({
   const speakerLRef = useRef<THREE.Mesh>(null!);
   const speakerRRef = useRef<THREE.Mesh>(null!);
 
-  // Web Audio API refs — always muffled (lo-fi vibe)
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const audioElRef = useRef<HTMLAudioElement | null>(null);
+  // Sync local visual state with the shared audio singleton
+  useEffect(() => {
+    let unsub: (() => void) | undefined;
+    import("@/lib/radioAudio").then((radio) => {
+      setPlaying(radio.isPlaying());
+      unsub = radio.subscribe(() => setPlaying(radio.isPlaying()));
+    });
+    return () => unsub?.();
+  }, []);
 
   // Pulsing speaker glow + LED (purple)
   useFrame((state) => {
@@ -597,53 +602,7 @@ function Radio({
   });
 
   const togglePlay = useCallback(() => {
-    // Lazily create AudioContext + nodes on first click (browser requires user gesture)
-    if (!audioCtxRef.current) {
-      const ctx = new AudioContext();
-      const audio = new Audio("/audio/radio.mp3");
-      audio.loop = true;
-      audio.crossOrigin = "anonymous";
-
-      const source = ctx.createMediaElementSource(audio);
-      const gain = ctx.createGain();
-      const filter = ctx.createBiquadFilter();
-
-      // Always muffled — lo-fi room sound
-      filter.type = "lowpass";
-      filter.frequency.value = 900;
-      filter.Q.value = 0.8;
-      gain.gain.value = 0.35;
-
-      // Chain: source → filter → gain → destination
-      source.connect(filter);
-      filter.connect(gain);
-      gain.connect(ctx.destination);
-
-      audioCtxRef.current = ctx;
-      audioElRef.current = audio;
-    }
-
-    if (playing) {
-      audioElRef.current!.pause();
-    } else {
-      audioCtxRef.current!.resume();
-      audioElRef.current!.play().catch(() => {});
-    }
-    setPlaying((p) => !p);
-  }, [playing]);
-
-  // Cleanup audio on unmount
-  useEffect(() => {
-    return () => {
-      if (audioElRef.current) {
-        audioElRef.current.pause();
-        audioElRef.current = null;
-      }
-      if (audioCtxRef.current) {
-        audioCtxRef.current.close();
-        audioCtxRef.current = null;
-      }
-    };
+    import("@/lib/radioAudio").then((radio) => radio.toggle());
   }, []);
 
   const radioMat = useMemo(
@@ -1240,58 +1199,19 @@ export default function Room3D({ onEnter }: Room3DProps) {
   const [hovered, setHovered] = useState(false);
   const materials = useMaterials();
 
-  // ── Leva dev controls ──────────────────────────────────
-  const pc = useControls("PC", {
-    x: { value: -1.9, min: -6, max: 2, step: 0.05 },
-    y: { value: 0, min: -2, max: 2, step: 0.05 },
-    z: { value: -0.85, min: -6, max: 2, step: 0.05 },
-    rotY: { value: 1.75, min: 0, max: Math.PI * 2, step: 0.01 },
-    monitorTilt: { value: -0.12, min: -0.5, max: 0.3, step: 0.01 },
-  });
-
-  const walls = useControls("Walls", {
-    backZ: { value: -2.85, min: -8, max: 0, step: 0.05 },
-    leftX: { value: -3.75, min: -8, max: 0, step: 0.05 },
-    floorY: { value: -0.05, min: -2, max: 1, step: 0.01 },
-  });
-
-  const spot = useControls("Spotlight", {
-    offsetX: { value: 0.2, min: -3, max: 3, step: 0.05 },
-    offsetY: { value: 3.2, min: 1, max: 6, step: 0.05 },
-    offsetZ: { value: 0.5, min: -3, max: 3, step: 0.05 },
-    intensity: { value: 40, min: 0, max: 120, step: 1 },
-    angle: { value: 0.9, min: 0.1, max: 1.5, step: 0.01 },
-  });
-
-  const radio = useControls("Radio", {
-    x: { value: -0.7, min: -6, max: 4, step: 0.05 },
-    y: { value: 0.05, min: -2, max: 3, step: 0.05 },
-    z: { value: -0.35, min: -6, max: 4, step: 0.05 },
-    rotY: { value: 0.5, min: 0, max: Math.PI * 2, step: 0.05 },
-  });
-
-  const cam = useControls("Camera", {
-    startX: { value: 2.35, min: -5, max: 10, step: 0.05 },
-    startY: { value: 1.54, min: 0, max: 5, step: 0.05 },
-    startZ: { value: 5.99, min: -5, max: 15, step: 0.05 },
-    lookX: { value: -0.5, min: -5, max: 5, step: 0.05 },
-    lookY: { value: 0.3, min: -2, max: 3, step: 0.05 },
-    lookZ: { value: -0.4, min: -5, max: 5, step: 0.05 },
-  });
-
   const cfg: SceneConfig = useMemo(() => ({
-    pcPos: [pc.x, pc.y, pc.z],
-    pcRotY: pc.rotY,
-    monitorTilt: pc.monitorTilt,
-    wallBackZ: walls.backZ,
-    wallLeftX: walls.leftX,
-    floorY: walls.floorY,
-    camStart: [cam.startX, cam.startY, cam.startZ],
-    camLook: [cam.lookX, cam.lookY, cam.lookZ],
-    spotOffset: [spot.offsetX, spot.offsetY, spot.offsetZ],
-    spotIntensity: spot.intensity,
-    spotAngle: spot.angle,
-  }), [pc, walls, spot, cam]);
+    pcPos: [-1.9, 0, -0.85],
+    pcRotY: 1.75,
+    monitorTilt: -0.12,
+    wallBackZ: -2.85,
+    wallLeftX: -3.75,
+    floorY: -0.05,
+    camStart: [2.35, 1.54, 5.99],
+    camLook: [-0.5, 0.3, -0.4],
+    spotOffset: [0.2, 3.2, 0.5],
+    spotIntensity: 40,
+    spotAngle: 0.9,
+  }), []);
 
   // ── Handlers ───────────────────────────────────────────
 
@@ -1313,8 +1233,6 @@ export default function Room3D({ onEnter }: Room3DProps) {
 
   return (
     <div className="fixed inset-0 z-[100]">
-      {/* Leva dev panel */}
-      <Leva hidden />
 
       <Canvas
         camera={{ position: cfg.camStart, fov: 50 }}
@@ -1344,8 +1262,8 @@ export default function Room3D({ onEnter }: Room3DProps) {
           )}
         </group>
 
-        {/* Retro radio — position via Leva controls */}
-        <group position={[radio.x, radio.y, radio.z]} rotation={[0, radio.rotY, 0]}>
+        {/* Retro radio */}
+        <group position={[-0.7, 0.05, -0.35]} rotation={[0, 0.5, 0]}>
           <Radio
             materials={materials}
             position={[0, 0, 0]}

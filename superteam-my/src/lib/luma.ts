@@ -22,7 +22,6 @@ export async function fetchLumaEvents(): Promise<LumaEvent[]> {
   const apiKey = process.env.LUMA_API_KEY;
 
   if (!apiKey) {
-    console.warn("LUMA_API_KEY not set — returning empty events");
     return [];
   }
 
@@ -36,14 +35,12 @@ export async function fetchLumaEvents(): Promise<LumaEvent[]> {
     });
 
     if (!res.ok) {
-      console.error("Luma API error:", res.status);
       return [];
     }
 
     const data = await res.json();
     return data.entries?.map((e: { event: LumaEvent }) => e.event) ?? [];
-  } catch (error) {
-    console.error("Failed to fetch Luma events:", error);
+  } catch {
     return [];
   }
 }

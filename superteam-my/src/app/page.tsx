@@ -63,32 +63,6 @@ export default function Home() {
             transition: "background 0.6s ease",
           }}
         >
-          {/* CRT overlay — scanlines + phosphor tint during wipe/expand, removed after enter */}
-          {revealing && !entered && (
-            <div
-              className="fixed inset-0 pointer-events-none"
-              style={{ zIndex: 9999 }}
-            >
-              {/* Scanlines */}
-              <div
-                className="absolute inset-0"
-                style={{
-                  background: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.12) 4px)",
-                }}
-              />
-              {/* No phosphor tint — pure black to blend with 3D CRT */}
-              {/* Vignette — strong, matching CRT tube look */}
-              <div
-                className="absolute inset-0"
-                style={{
-                  boxShadow: "inset 0 0 200px 80px rgba(0,0,0,0.4)",
-                }}
-              />
-              {/* Subtle flicker */}
-              <div className="absolute inset-0 crt-flicker" style={{ opacity: 0.05, background: "rgba(0,255,136,0.03)" }} />
-            </div>
-          )}
-
           <Navbar />
 
           <main>

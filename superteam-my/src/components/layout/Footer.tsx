@@ -110,7 +110,7 @@ export default function Footer() {
         {/* Bottom */}
         <div className="mt-12 pt-6 border-t border-border-dim flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="font-mono text-[0.6rem] text-text-secondary tracking-[0.1em]">
-            // SESSION ENDED — TERMINAL.MY v1.0 — © 2026
+            © 2026 Superteam Malaysia
           </p>
           <p className="font-mono text-[0.6rem] text-text-secondary/50 tracking-[0.1em]">
             POWERED BY SOLANA

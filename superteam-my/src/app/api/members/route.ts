@@ -8,9 +8,5 @@ const MOCK_MEMBERS = [
 ];
 
 export async function GET() {
-  // TODO: Replace with Supabase query
-  // const supabase = await createClient();
-  // const { data, error } = await supabase.from('members').select('*').order('display_order');
-
   return NextResponse.json({ members: MOCK_MEMBERS });
 }

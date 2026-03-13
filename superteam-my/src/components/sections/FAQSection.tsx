@@ -80,9 +80,6 @@ export default function FAQSection() {
         <div className="flex flex-col gap-8 md:flex-row md:gap-12">
           {/* Left sidebar — Category navigation */}
           <nav className="shrink-0 md:w-56">
-            <div className="font-mono text-[0.6rem] uppercase tracking-[0.15em] text-text-secondary mb-4">
-              // SELECT CATEGORY
-            </div>
             <ul className="space-y-1">
               {CATEGORIES.map((cat) => (
                 <li key={cat}>

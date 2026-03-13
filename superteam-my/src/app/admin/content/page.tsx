@@ -38,7 +38,6 @@ export default function AdminContent() {
   const [content, setContent] = useState(DEFAULT_CONTENT);
 
   const handleSave = () => {
-    // TODO: Save to Supabase
     try {
       JSON.parse(content[activeSection]);
       alert("Content saved! (mock — Supabase integration pending)");

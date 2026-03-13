@@ -79,14 +79,14 @@ export default function MembersSpotlight() {
     <section id="members" className="relative py-24 px-6">
       <div className="mx-auto max-w-7xl space-y-12">
         {/* Section header */}
-        <SectionLabel number="03" label="Operatives" />
+        <SectionLabel number="03" label="Members" />
 
         <div className="space-y-2">
           <h2 className="font-display text-3xl md:text-4xl font-black tracking-tight text-text-primary">
             MEMBER SPOTLIGHT
           </h2>
-          <p className="font-mono text-xs text-text-secondary tracking-[0.1em] uppercase">
-            // Personnel monitoring center — {MOCK_MEMBERS.length} operatives on file
+          <p className="font-mono text-xs text-text-secondary tracking-[0.1em]">
+            Meet the core team driving Superteam Malaysia
           </p>
         </div>
 
@@ -94,10 +94,6 @@ export default function MembersSpotlight() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left: Portrait card stack */}
           <div className="lg:col-span-4 xl:col-span-3 space-y-2">
-            <div className="font-mono text-[0.55rem] text-text-secondary/50 tracking-[0.15em] uppercase mb-3">
-              Personnel Roster
-            </div>
-
             {MOCK_MEMBERS.map((member, index) => {
               const isActive = index === activeIndex;
               return (
@@ -145,17 +141,6 @@ export default function MembersSpotlight() {
                     </div>
                   </div>
 
-                  {/* Status label */}
-                  <div
-                    className={cn(
-                      "flex-shrink-0 font-mono text-[0.5rem] uppercase tracking-[0.15em] px-2 py-0.5 border",
-                      isActive
-                        ? "text-sol-green border-sol-green/30 bg-sol-green/10"
-                        : "text-text-secondary/40 border-border-dim bg-transparent"
-                    )}
-                  >
-                    {isActive ? "Active" : "Standby"}
-                  </div>
                 </button>
               );
             })}
@@ -181,7 +166,7 @@ export default function MembersSpotlight() {
           {/* Right: Detail panel */}
           <div className="lg:col-span-8 xl:col-span-9 relative">
             <CRTFrame
-              title={`Operative ${String(activeIndex + 1).padStart(2, "0")} // ${activeMember.name.toUpperCase()}`}
+              title={`// ${activeMember.name.toUpperCase()}`}
               color="green"
               className="min-h-[420px]"
             >
@@ -213,14 +198,6 @@ export default function MembersSpotlight() {
                       >
                         {getInitials(activeMember.name)}
                       </div>
-                      <div className="text-center">
-                        <div className="font-mono text-[0.55rem] text-text-secondary/40 tracking-[0.15em] uppercase">
-                          ID: OPR-{activeMember.id.padStart(3, "0")}
-                        </div>
-                        <div className="font-mono text-[0.55rem] text-text-secondary/40 tracking-[0.15em] uppercase mt-1">
-                          Clearance: {activeMember.is_core_team ? "ALPHA" : "BRAVO"}
-                        </div>
-                      </div>
                     </div>
 
                     {/* Details */}
@@ -248,7 +225,7 @@ export default function MembersSpotlight() {
                       {/* Skills */}
                       <div className="space-y-2">
                         <div className="font-mono text-[0.55rem] text-text-secondary/50 tracking-[0.15em] uppercase">
-                          Skill Matrix
+                          Skills
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {activeMember.skills.map((skill) => (
@@ -268,7 +245,7 @@ export default function MembersSpotlight() {
                       {/* Badges */}
                       <div className="space-y-2">
                         <div className="font-mono text-[0.55rem] text-text-secondary/50 tracking-[0.15em] uppercase">
-                          Designations
+                          Roles
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {activeMember.badges.map((badge) => (
@@ -292,9 +269,6 @@ export default function MembersSpotlight() {
 
                       {/* Bio */}
                       <div className="space-y-2">
-                        <div className="font-mono text-[0.55rem] text-text-secondary/50 tracking-[0.15em] uppercase">
-                          Intel
-                        </div>
                         <p className="font-mono text-sm text-text-secondary leading-relaxed">
                           {activeMember.bio}
                         </p>
@@ -310,7 +284,6 @@ export default function MembersSpotlight() {
                         >
                           <ExternalLink className="h-3 w-3" />
                           <span className="group-hover:underline">@{activeMember.name.split(" ")[0].toLowerCase()}</span>
-                          <span className="text-text-secondary/30 text-[0.5rem]">// COMMS LINK</span>
                         </a>
                       )}
                     </div>

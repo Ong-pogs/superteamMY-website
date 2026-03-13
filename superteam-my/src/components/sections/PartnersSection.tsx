@@ -3,7 +3,6 @@
 import { Suspense, useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Canvas } from "@react-three/fiber";
-import { Leva } from "leva";
 import * as THREE from "three";
 import { cn } from "@/lib/utils";
 import SectionLabel from "@/components/ui/SectionLabel";
@@ -193,9 +192,6 @@ export default function PartnersSection() {
 
   // ─── Desktop: full-viewport 3D scene ──────────────────
   return (
-    <>
-    {/* Leva debug panel — toggle "Edit Mode" in the Scene folder to show controls */}
-    <Leva collapsed />
     <section
       ref={sectionRef}
       id="partners"
@@ -270,6 +266,5 @@ export default function PartnersSection() {
       {/* Loading state */}
       {!inView && <CanvasLoader />}
     </section>
-    </>
   );
 }

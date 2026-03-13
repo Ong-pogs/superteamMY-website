@@ -118,7 +118,7 @@ export default function Navbar() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.97 }}
               transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="fixed z-[70] w-[min(520px,90vw)] bg-[#D0D0D8] rounded-2xl overflow-auto max-h-[80vh] top-16 right-6 md:right-10 lg:right-14 shadow-2xl"
+              className="fixed z-[70] w-[min(520px,90vw)] bg-[#111118] rounded-2xl overflow-auto max-h-[80vh] top-16 right-6 md:right-10 lg:right-14 shadow-2xl border border-border-dim"
             >
               {/* Nav links — large bold typography */}
               <div className="px-8 md:px-12 pt-10 pb-12 space-y-2">
@@ -136,7 +136,7 @@ export default function Navbar() {
                     <a
                       href={link.href}
                       onClick={() => setOpen(false)}
-                      className="block font-display font-black text-[clamp(2rem,5vw,3.5rem)] leading-[1.15] text-[#0A0A0F] hover:text-[#0A0A0F]/60 transition-colors duration-200"
+                      className="block font-display font-black text-[clamp(2rem,5vw,3.5rem)] leading-[1.15] text-text-primary hover:text-sol-green transition-colors duration-200"
                     >
                       {link.label}
                     </a>
@@ -159,7 +159,7 @@ export default function Navbar() {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => setOpen(false)}
-                    className="inline-block px-6 py-3 bg-[#0A0A0F] text-sol-green font-mono text-[0.7rem] uppercase tracking-[0.15em] hover:bg-[#0A0A0F]/80 transition-colors"
+                    className="inline-block px-6 py-3 bg-sol-green text-[#0A0A0F] font-mono text-[0.7rem] uppercase tracking-[0.15em] font-bold hover:bg-sol-green/85 transition-colors"
                   >
                     Join Community
                   </a>

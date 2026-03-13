@@ -20,15 +20,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
 
   useEffect(() => {
-    // TODO: Replace with real Supabase auth check
-    // For now, simulate auth
     const isAuth = typeof window !== "undefined" && sessionStorage.getItem("admin_auth") === "true";
     setAuthenticated(isAuth);
     setLoading(false);
   }, []);
 
   const handleLogin = () => {
-    // TODO: Replace with Supabase magic link auth
     sessionStorage.setItem("admin_auth", "true");
     setAuthenticated(true);
   };
