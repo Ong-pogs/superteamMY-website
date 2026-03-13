@@ -27,13 +27,14 @@ function getCrtRect(): CrtRect {
     return { top: vh * 0.15, right: vw * 0.78, bottom: vh * 0.78, left: vw * 0.22 };
   }
   const rect = el.getBoundingClientRect();
-  // Shrink inward slightly so the reveal stays inside the glass
-  const pad = Math.min(vw, vh) * 0.015;
+  // Shrink inward generously so the reveal stays well inside the CRT glass
+  const padX = rect.width * 0.08;
+  const padY = rect.height * 0.08;
   return {
-    top: rect.top + pad,
-    right: rect.right - pad,
-    bottom: rect.bottom - pad,
-    left: rect.left + pad,
+    top: rect.top + padY,
+    right: rect.right - padX,
+    bottom: rect.bottom - padY,
+    left: rect.left + padX,
   };
 }
 
@@ -41,10 +42,82 @@ function polyClip(l: number, t: number, r: number, b: number) {
   return `polygon(${l}px ${t}px, ${r}px ${t}px, ${r}px ${b}px, ${l}px ${b}px)`;
 }
 
+// ── Glitch bar helpers ──────────────────────────────────
+
+const GLITCH_BAR_COUNT = 6;
+
+interface GlitchBar {
+  el: HTMLDivElement;
+  nextTrigger: number;
+  active: boolean;
+}
+
+function createGlitchBars(container: HTMLDivElement): GlitchBar[] {
+  const bars: GlitchBar[] = [];
+  for (let i = 0; i < GLITCH_BAR_COUNT; i++) {
+    const el = document.createElement("div");
+    el.style.cssText =
+      "position:absolute;left:0;right:0;height:0;pointer-events:none;opacity:0;will-change:transform,opacity;";
+    container.appendChild(el);
+    bars.push({ el, nextTrigger: Math.random() * 300, active: false });
+  }
+  return bars;
+}
+
+function tickGlitchBars(
+  bars: GlitchBar[],
+  elapsed: number,
+  crt: CrtRect,
+  wipeProgress: number,
+) {
+  const crtH = crt.bottom - crt.top;
+  const crtW = crt.right - crt.left;
+  const intensity = Math.sin(wipeProgress * Math.PI); // strongest at mid-wipe
+
+  for (const bar of bars) {
+    if (elapsed < bar.nextTrigger) continue;
+
+    if (!bar.active) {
+      // Activate: random horizontal strip inside CRT area
+      bar.active = true;
+      const h = 2 + Math.random() * 6;
+      const y = crt.top + Math.random() * crtH;
+      const offsetX = (Math.random() - 0.5) * crtW * 0.15 * intensity;
+      const isGreen = Math.random() > 0.5;
+
+      bar.el.style.top = `${y}px`;
+      bar.el.style.height = `${h}px`;
+      bar.el.style.left = `${crt.left}px`;
+      bar.el.style.width = `${crtW}px`;
+      bar.el.style.transform = `translateX(${offsetX}px)`;
+      bar.el.style.opacity = `${0.15 + Math.random() * 0.35}`;
+      bar.el.style.background = isGreen
+        ? `rgba(0,255,163,${0.08 + Math.random() * 0.12})`
+        : `rgba(255,255,255,${0.04 + Math.random() * 0.08})`;
+      bar.el.style.mixBlendMode = "screen";
+      bar.nextTrigger = elapsed + 30 + Math.random() * 60; // visible for 30-90ms
+    } else {
+      // Deactivate
+      bar.active = false;
+      bar.el.style.opacity = "0";
+      bar.nextTrigger = elapsed + 80 + Math.random() * 250; // pause before next glitch
+    }
+  }
+}
+
+function cleanupGlitchBars(bars: GlitchBar[]) {
+  for (const bar of bars) {
+    bar.el.remove();
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+
 export default function CinematicReveal({ onComplete, onReveal, siteRef }: CinematicRevealProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const slitRef = useRef<HTMLDivElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
+  const flashRef = useRef<HTMLDivElement>(null);
   const onRevealRef = useRef(onReveal);
   const onCompleteRef = useRef(onComplete);
   onRevealRef.current = onReveal;
@@ -52,13 +125,17 @@ export default function CinematicReveal({ onComplete, onReveal, siteRef }: Cinem
 
   useEffect(() => {
     const siteEl = siteRef.current;
-    if (!siteEl) return;
+    const containerEl = containerRef.current;
+    if (!siteEl || !containerEl) return;
 
     let cancelled = false;
     const crt = getCrtRect();
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const crtH = crt.bottom - crt.top;
+
+    // Create glitch bars
+    const glitchBars = createGlitchBars(containerEl);
 
     // Start fully clipped (zero-width polygon at left edge of CRT)
     siteEl.style.clipPath = polyClip(crt.left, crt.top, crt.left, crt.bottom);
@@ -67,16 +144,22 @@ export default function CinematicReveal({ onComplete, onReveal, siteRef }: Cinem
 
     // ── Wipe: right edge sweeps from crt.left → crt.right ──
     let wipeStart = 0;
-    const wipeDuration = 800;
+    const wipeDuration = 1400;
 
     const wipe = (now: number) => {
       if (cancelled) return;
       if (!wipeStart) wipeStart = now;
-      const p = Math.min((now - wipeStart) / wipeDuration, 1);
+      const elapsed = now - wipeStart;
+      const p = Math.min(elapsed / wipeDuration, 1);
       const eased = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
 
       const r = lerp(crt.left, crt.right, eased);
-      siteEl.style.clipPath = polyClip(crt.left, crt.top, r, crt.bottom);
+
+      // Small horizontal jitter — CRT signal noise
+      const jitter = p > 0.1 && p < 0.9
+        ? (Math.random() - 0.5) * 1.5
+        : 0;
+      siteEl.style.clipPath = polyClip(crt.left + jitter, crt.top, r, crt.bottom);
 
       // Slit line
       if (slitRef.current) {
@@ -97,11 +180,42 @@ export default function CinematicReveal({ onComplete, onReveal, siteRef }: Cinem
         glowRef.current.style.width = `${gw}px`;
       }
 
+      // Tick glitch bars
+      tickGlitchBars(glitchBars, elapsed, crt, p);
+
       if (p < 1) {
         requestAnimationFrame(wipe);
       } else {
         if (slitRef.current) slitRef.current.style.display = "none";
         if (glowRef.current) glowRef.current.style.display = "none";
+        cleanupGlitchBars(glitchBars);
+        // Brief green flash before expand — CRT "lock" signal
+        requestAnimationFrame(flash);
+      }
+    };
+
+    // ── Flash: brief CRT signal flash between wipe and expand ──
+    let flashStart = 0;
+    const flashDuration = 150;
+
+    const flash = (now: number) => {
+      if (cancelled) return;
+      if (!flashStart) flashStart = now;
+      const p = Math.min((now - flashStart) / flashDuration, 1);
+
+      if (flashRef.current) {
+        // Sharp in, smooth out
+        const opacity = p < 0.3
+          ? p / 0.3
+          : 1 - ((p - 0.3) / 0.7);
+        flashRef.current.style.opacity = `${opacity * 0.25}`;
+        flashRef.current.style.display = "block";
+      }
+
+      if (p < 1) {
+        requestAnimationFrame(flash);
+      } else {
+        if (flashRef.current) flashRef.current.style.display = "none";
         requestAnimationFrame(expand);
       }
     };
@@ -128,7 +242,7 @@ export default function CinematicReveal({ onComplete, onReveal, siteRef }: Cinem
       } else {
         // Full viewport reached — remove clip-path
         siteEl.style.clipPath = "";
-        if (containerRef.current) containerRef.current.style.display = "none";
+        if (containerEl) containerEl.style.display = "none";
         onCompleteRef.current();
       }
     };
@@ -138,7 +252,7 @@ export default function CinematicReveal({ onComplete, onReveal, siteRef }: Cinem
       if (!cancelled) requestAnimationFrame(wipe);
     });
 
-    return () => { cancelled = true; };
+    return () => { cancelled = true; cleanupGlitchBars(glitchBars); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -163,6 +277,18 @@ export default function CinematicReveal({ onComplete, onReveal, siteRef }: Cinem
           position: "absolute",
           display: "none",
           background: "linear-gradient(to right, transparent, rgba(0,255,163,0.06))",
+        }}
+      />
+      {/* CRT signal flash — green burst between wipe and expand */}
+      <div
+        ref={flashRef}
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "none",
+          opacity: 0,
+          background: "radial-gradient(ellipse at center, rgba(0,255,163,0.4) 0%, rgba(0,255,136,0.1) 50%, transparent 80%)",
+          pointerEvents: "none",
         }}
       />
     </div>

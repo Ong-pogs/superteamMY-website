@@ -813,12 +813,31 @@ function CameraController({
 
 function CameraIdle({ active, cfg }: { active: boolean; cfg: SceneConfig }) {
   const { camera } = useThree();
+  // Smoothed mouse position (-1 to 1)
+  const mouse = useRef({ x: 0, y: 0, smoothX: 0, smoothY: 0 });
 
-  useFrame((state) => {
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      mouse.current.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.current.y = (e.clientY / window.innerHeight) * 2 - 1;
+    };
+    window.addEventListener("mousemove", onMove);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, []);
+
+  useFrame((state, delta) => {
     if (!active) return;
     const t = state.clock.elapsedTime;
-    camera.position.x = cfg.camStart[0] + Math.sin(t * 0.1) * 0.06;
-    camera.position.y = cfg.camStart[1] + Math.sin(t * 0.15) * 0.03;
+    const m = mouse.current;
+
+    // Smooth lerp toward actual mouse position
+    const smoothing = 1 - Math.pow(0.05, delta);
+    m.smoothX += (m.x - m.smoothX) * smoothing;
+    m.smoothY += (m.y - m.smoothY) * smoothing;
+
+    // Combine idle sway + mouse parallax
+    camera.position.x = cfg.camStart[0] + Math.sin(t * 0.1) * 0.06 + m.smoothX * 0.7;
+    camera.position.y = cfg.camStart[1] + Math.sin(t * 0.15) * 0.03 - m.smoothY * 0.45;
     camera.position.z = cfg.camStart[2] + Math.cos(t * 0.08) * 0.04;
     camera.lookAt(cfg.camLook[0], cfg.camLook[1], cfg.camLook[2]);
   });

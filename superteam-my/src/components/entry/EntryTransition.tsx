@@ -98,17 +98,19 @@ export default function EntryTransition({ onComplete, onReveal, siteRef }: Entry
   if (isMobile) {
     return (
       <AnimatePresence>
-        <MobileFallback onEnter={handleEnter} />
+        <div style={{ "--font-mono": "var(--font-mono-3d)" } as React.CSSProperties}>
+          <MobileFallback onEnter={handleEnter} />
+        </div>
       </AnimatePresence>
     );
   }
 
   return (
-    <>
+    <div style={{ "--font-mono": "var(--font-mono-3d)" } as React.CSSProperties}>
       <Suspense fallback={<LoadingScreen />}>
         <Room3D onEnter={handleEnter} />
       </Suspense>
       {exiting && <CinematicReveal onComplete={onComplete} onReveal={onReveal} siteRef={siteRef} />}
-    </>
+    </div>
   );
 }

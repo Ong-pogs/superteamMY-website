@@ -8,25 +8,30 @@ import GlassShatter from "@/components/effects/GlassShatter";
 import MalaysiaMap from "./MalaysiaMap";
 
 interface HeroSectionProps {
-  animate?: boolean;
+  /** Start slow panel slide-ins (phase 1) — during CRT wipe */
+  revealing?: boolean;
+  /** Start text/content animations (phase 2) — after CRT expand */
+  entered?: boolean;
 }
 
-// Animation phases (no loading screen):
-// 0 — Waiting (nothing visible)
-// 1 — Color blocks expand into final layout
-// 2 — Typography slides up, sidebar content fades in
+// Animation phases:
+// 0 — Waiting (nothing visible, grey cover on top)
+// 1 — Panels slide in slowly, grey cover drops away (during CRT wipe)
+// 2 — Typography slides up, sidebar content fades in (after CRT expand)
 
-export default function HeroSection({ animate = true }: HeroSectionProps) {
+export default function HeroSection({ revealing = false, entered = false }: HeroSectionProps) {
   const [phase, setPhase] = useState(0);
+  const [gHovered, setGHovered] = useState(false);
 
+  // Both phases wait for CRT expand to complete (entered=true)
   useEffect(() => {
-    if (!animate) return;
+    if (!entered) return;
     const timers = [
       setTimeout(() => setPhase(1), 100),
-      setTimeout(() => setPhase(2), 1300),
+      setTimeout(() => setPhase(2), 1400),
     ];
     return () => timers.forEach(clearTimeout);
-  }, [animate]);
+  }, [entered]);
 
 
   const ease = [0.16, 1, 0.3, 1] as const;
@@ -40,16 +45,41 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
   const imgY = useTransform(imgScroll, [0, 1], ["-15%", "15%"]);
 
   return (
-    <section id="hero" className="relative overflow-x-clip" style={{ background: "#D0D0D8" }}>
-      {/* Grey cover — sits on top of everything, drops away to reveal white bg */}
+    <section
+      id="hero"
+      className="relative overflow-x-clip"
+      style={{
+        background: phase >= 2 ? "#D0D0D8" : "#000000",
+        transition: "background 0.8s ease",
+      }}
+    >
+      {/* CRT screen cover — dark phosphor surface, drops away to reveal panels */}
       <div className="fixed inset-0 overflow-hidden z-50 pointer-events-none">
         <motion.div
           className="absolute inset-0"
-          style={{ background: "#B0B0B8" }}
+          style={{
+            background: "#000000",
+          }}
           initial={{ y: "0%" }}
           animate={phase >= 1 ? { y: "100%" } : {}}
-          transition={{ duration: 1.0, delay: 0, ease }}
-        />
+          transition={{ duration: 1.8, delay: 0.1, ease }}
+        >
+          {/* Scanlines on cover */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: "repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px)",
+            }}
+          />
+          {/* No phosphor glow — keep pure black to match 3D CRT */}
+          {/* Vignette — heavy edges like CRT tube */}
+          <div
+            className="absolute inset-0"
+            style={{
+              boxShadow: "inset 0 0 250px 100px rgba(0,0,0,0.7)",
+            }}
+          />
+        </motion.div>
       </div>
 
       <div className="relative flex flex-col lg:flex-row">
@@ -60,11 +90,12 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
           <div className="overflow-hidden min-h-[60vh] lg:min-h-[92vh]">
           <motion.div
             className="relative min-h-[60vh] lg:min-h-[92vh] overflow-hidden"
-            style={{ background: "#00FFA3" }}
+            style={{ background: "#0A0A0F" }}
             initial={{ y: "-100%" }}
             animate={phase >= 1 ? { y: "0%" } : {}}
-            transition={{ duration: 1.1, delay: 0, ease }}
+            transition={{ duration: 1.6, delay: 0.15, ease }}
           >
+
             {/* Subtle noise texture */}
             <div className="noise-overlay absolute inset-0 opacity-[0.03]" />
 
@@ -73,10 +104,10 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
               A — Main Gradient Panel
             </div>
 
-            {/* 3D Glass </> shatter effect — desktop only */}
-            <div className="absolute right-8 top-8 w-[280px] h-[280px] z-10 hidden lg:block pointer-events-auto">
+            {/* 3D Glass </> shatter effect — disabled for now */}
+            {/* <div className="absolute right-8 top-8 w-[280px] h-[280px] z-10 hidden lg:block pointer-events-auto">
               <GlassShatter />
-            </div>
+            </div> */}
 
             {/* Text container — centered-low, like Shift5 */}
             <div className="relative h-full flex flex-col justify-center px-6 sm:px-10 md:px-14 lg:px-16 xl:px-20 pt-24 lg:pt-[20vh]">
@@ -85,21 +116,33 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
                 {/* SUPER// — masked slide-up */}
                 <div className="overflow-hidden">
                   <motion.h1
-                    className="font-display font-black leading-[0.85] text-[#0A0A0F]"
-                    style={{ fontSize: "clamp(3.5rem, 13vw, 13rem)" }}
+                    className="font-display font-black leading-[0.85]"
+                    style={{
+                      fontSize: "clamp(3.5rem, 13vw, 13rem)",
+                      background: "linear-gradient(135deg, #9945FF 0%, #14F195 100%)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                      backgroundClip: "text",
+                    }}
                     initial={{ y: "110%" }}
                     animate={phase >= 2 ? { y: "0%" } : {}}
                     transition={{ duration: 0.8, ease }}
                   >
-                    SUPER<span className="opacity-30">//</span>
+                    SUPER<span style={{ opacity: 0.3 }}>//</span>
                   </motion.h1>
                 </div>
 
                 {/* TEAM — masked slide-up (staggered) */}
                 <div className="overflow-hidden">
                   <motion.h1
-                    className="font-display font-black leading-[0.85] text-[#0A0A0F]"
-                    style={{ fontSize: "clamp(3.5rem, 13vw, 13rem)" }}
+                    className="font-display font-black leading-[0.85]"
+                    style={{
+                      fontSize: "clamp(3.5rem, 13vw, 13rem)",
+                      background: "linear-gradient(135deg, #9945FF 0%, #14F195 100%)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                      backgroundClip: "text",
+                    }}
                     initial={{ y: "110%" }}
                     animate={phase >= 2 ? { y: "0%" } : {}}
                     transition={{ duration: 0.8, delay: 0.1, ease }}
@@ -108,8 +151,20 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
                   </motion.h1>
                 </div>
 
+                {/* MALAYSIA — terminal-style location tag */}
+                <div className="overflow-hidden mt-4 lg:mt-6">
+                  <motion.p
+                    className="font-mono text-lg sm:text-xl lg:text-2xl text-sol-green/60"
+                    initial={{ y: "110%" }}
+                    animate={phase >= 2 ? { y: "0%" } : {}}
+                    transition={{ duration: 0.8, delay: 0.2, ease }}
+                  >
+                    // MALAYSIA_
+                  </motion.p>
+                </div>
+
                 {/* Malaysia map outline — Peninsular + East Malaysia */}
-                <MalaysiaMap className="absolute right-4 lg:right-8 bottom-4 lg:bottom-8 w-[250px] lg:w-[500px] xl:w-[650px] opacity-[0.12]" />
+                <MalaysiaMap className="absolute right-4 lg:right-8 bottom-4 lg:bottom-8 w-[250px] lg:w-[500px] xl:w-[650px] opacity-[0.35]" />
               </div>
             </div>
           </motion.div>
@@ -201,7 +256,7 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
               className="bg-bg-terminal p-6 lg:p-8 border-t border-border-dim h-full"
               initial={{ y: "-100%" }}
               animate={phase >= 1 ? { y: "0%" } : {}}
-              transition={{ duration: 1.0, delay: 0, ease }}
+              transition={{ duration: 1.6, delay: 0.25, ease }}
             >
               <motion.div
                 initial={{ opacity: 0 }}
@@ -222,42 +277,137 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
 
             {/* Panel G */}
             <div className="overflow-hidden lg:h-[50vh]">
-            <motion.a
-              href="#mission"
-              className="group relative p-6 lg:p-8 flex flex-col justify-between cursor-pointer overflow-hidden h-full"
+            <motion.div
+              className="relative cursor-pointer overflow-hidden h-full"
               style={{ background: "#00FFA3" }}
               initial={{ y: "-100%" }}
               animate={phase >= 1 ? { y: "0%" } : {}}
-              transition={{ duration: 1.0, delay: 0, ease }}
+              transition={{ duration: 1.6, delay: 0.35, ease }}
+              onMouseEnter={() => setGHovered(true)}
+              onMouseLeave={() => setGHovered(false)}
             >
               {/* DEBUG LABEL */}
-              <span className="px-2 py-0.5 bg-yellow-500 text-black font-mono text-[10px] rounded w-fit">
+              <span className="absolute top-2 left-2 z-10 px-2 py-0.5 bg-yellow-500 text-black font-mono text-[10px] rounded w-fit">
                 G — Bottom Row
               </span>
 
-              {/* Arrow icon — top right */}
-              <div className="flex justify-end">
-                <svg
+              {/* Default state — arrow top-right + text bottom */}
+              <motion.div
+                className="absolute inset-0 p-6 lg:p-8 flex flex-col justify-between"
+                animate={{ opacity: gHovered ? 0 : 1 }}
+                transition={{ duration: 0.25 }}
+              >
+                <div className="flex justify-end">
+                  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" className="text-[#0A0A0F]">
+                    <path d="M14 34L34 14M34 14H18M34 14V30" stroke="currentColor" strokeWidth="3.5" strokeLinecap="square" />
+                  </svg>
+                </div>
+                <p className="font-display text-lg xl:text-xl text-[#0A0A0F]/80 leading-snug">
+                  Explore the community.
+                </p>
+              </motion.div>
+
+              {/* Arrow — animates to center and rotates down */}
+              <motion.div
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                initial={false}
+                animate={{ opacity: gHovered ? 1 : 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <motion.svg
                   width="48"
                   height="48"
                   viewBox="0 0 48 48"
                   fill="none"
-                  className="text-[#0A0A0F] transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1"
+                  className="text-[#0A0A0F]"
+                  initial={false}
+                  animate={{ rotate: gHovered ? 90 : 0 }}
+                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] as const }}
                 >
-                  <path
-                    d="M14 34L34 14M34 14H18M34 14V30"
-                    stroke="currentColor"
-                    strokeWidth="3.5"
-                    strokeLinecap="square"
-                  />
-                </svg>
-              </div>
+                  <path d="M14 34L34 14M34 14H18M34 14V30" stroke="currentColor" strokeWidth="3.5" strokeLinecap="square" />
+                </motion.svg>
+              </motion.div>
 
-              {/* Text — bottom */}
-              <p className="font-display text-lg xl:text-xl text-[#0A0A0F]/80 leading-snug">
-                Explore the community.
-              </p>
-            </motion.a>
+              {/* Split cards — slide in from sides on hover */}
+              <motion.div
+                className="absolute inset-0 flex"
+                initial={false}
+                animate={{ opacity: gHovered ? 1 : 0 }}
+                transition={{ duration: 0.2 }}
+                style={{ pointerEvents: gHovered ? "auto" : "none" }}
+              >
+                {/* Left — Join Community */}
+                <motion.a
+                  href="https://t.me/superteammy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="relative w-1/2 h-full flex flex-col items-center justify-end p-6 lg:p-8 pb-8 lg:pb-10"
+                  style={{ background: "#00FFA3" }}
+                  initial={false}
+                  animate={{ x: gHovered ? "0%" : "-101%" }}
+                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] as const }}
+                >
+                  {/* Animated outline */}
+                  <motion.div
+                    className="absolute inset-3 border-2 border-[#0A0A0F]/20 rounded-sm pointer-events-none"
+                    initial={false}
+                    animate={{
+                      opacity: gHovered ? 1 : 0,
+                      scale: gHovered ? 1 : 0.92,
+                    }}
+                    transition={{ duration: 0.4, delay: gHovered ? 0.25 : 0, ease: [0.16, 1, 0.3, 1] as const }}
+                  />
+                  <div className="flex flex-col items-center gap-3">
+                    <svg width="28" height="28" viewBox="0 0 48 48" fill="none" className="text-[#0A0A0F]/60">
+                      <path d="M24 14V34M24 34L16 26M24 34L32 26" stroke="currentColor" strokeWidth="3.5" strokeLinecap="square" />
+                    </svg>
+                    <span className="font-display font-bold text-sm xl:text-base text-[#0A0A0F] text-center leading-tight">
+                      Join<br />Community
+                    </span>
+                  </div>
+                </motion.a>
+
+                {/* Divider */}
+                <motion.div
+                  className="w-px self-stretch bg-[#0A0A0F]/20 z-10 origin-center"
+                  initial={false}
+                  animate={{
+                    scaleY: gHovered ? 1 : 0,
+                    opacity: gHovered ? 1 : 0,
+                  }}
+                  transition={{ duration: 0.35, delay: gHovered ? 0.2 : 0 }}
+                />
+
+                {/* Right — Explore Opportunities */}
+                <motion.a
+                  href="#mission"
+                  className="relative w-1/2 h-full flex flex-col items-center justify-end p-6 lg:p-8 pb-8 lg:pb-10"
+                  style={{ background: "#00FFA3" }}
+                  initial={false}
+                  animate={{ x: gHovered ? "0%" : "101%" }}
+                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] as const }}
+                >
+                  {/* Animated outline */}
+                  <motion.div
+                    className="absolute inset-3 border-2 border-[#0A0A0F]/20 rounded-sm pointer-events-none"
+                    initial={false}
+                    animate={{
+                      opacity: gHovered ? 1 : 0,
+                      scale: gHovered ? 1 : 0.92,
+                    }}
+                    transition={{ duration: 0.4, delay: gHovered ? 0.25 : 0, ease: [0.16, 1, 0.3, 1] as const }}
+                  />
+                  <div className="flex flex-col items-center gap-3">
+                    <svg width="28" height="28" viewBox="0 0 48 48" fill="none" className="text-[#0A0A0F]/60">
+                      <path d="M24 14V34M24 34L16 26M24 34L32 26" stroke="currentColor" strokeWidth="3.5" strokeLinecap="square" />
+                    </svg>
+                    <span className="font-display font-bold text-sm xl:text-base text-[#0A0A0F] text-center leading-tight">
+                      Explore<br />Opportunities
+                    </span>
+                  </div>
+                </motion.a>
+              </motion.div>
+            </motion.div>
             </div>
           </div>
           {/* Spacer — fills sidebar alongside 3 boxes with terminal bg so Panel G doesn't poke out */}

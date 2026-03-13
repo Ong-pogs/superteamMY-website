@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 interface BinaryStreamProps {
   lines?: number;
   className?: string;
+  interval?: number;
 }
 
 function generateBinaryLine(): string {
@@ -15,18 +16,18 @@ function generateBinaryLine(): string {
     Array.from({ length: 8 }, () => Math.round(Math.random()).toString()).join("");
 }
 
-export default function BinaryStream({ lines = 6, className }: BinaryStreamProps) {
+export default function BinaryStream({ lines = 6, className, interval: tick = 2000 }: BinaryStreamProps) {
   const [data, setData] = useState<string[]>([]);
 
   useEffect(() => {
     setData(Array.from({ length: lines }, () => generateBinaryLine()));
 
-    const interval = setInterval(() => {
+    const id = setInterval(() => {
       setData(Array.from({ length: lines }, () => generateBinaryLine()));
-    }, 2000);
+    }, tick);
 
-    return () => clearInterval(interval);
-  }, [lines]);
+    return () => clearInterval(id);
+  }, [lines, tick]);
 
   return (
     <div className={cn("font-mono text-[0.65rem] text-sol-green/30 leading-relaxed overflow-hidden", className)}>

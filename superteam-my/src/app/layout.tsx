@@ -1,17 +1,25 @@
 import type { Metadata } from "next";
-import { Outfit, JetBrains_Mono, Silkscreen } from "next/font/google";
+import { JetBrains_Mono, Silkscreen } from "next/font/google";
+import localFont from "next/font/local";
 import SmoothScroll from "@/components/layout/SmoothScroll";
 import "./globals.css";
 
-const outfit = Outfit({
+const ethnocentric = localFont({
+  src: "../../public/fonts/Ethnocentric-Regular.otf",
   variable: "--font-display",
-  subsets: ["latin"],
   display: "swap",
-  weight: ["400", "500", "700", "900"],
+  weight: "400",
+});
+
+const auxMono = localFont({
+  src: "../../public/fonts/AuxMono.woff2",
+  variable: "--font-mono",
+  display: "swap",
+  weight: "400",
 });
 
 const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-mono",
+  variable: "--font-mono-3d",
   subsets: ["latin"],
   display: "swap",
   weight: ["400", "500"],
@@ -51,7 +59,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${outfit.variable} ${jetbrainsMono.variable} ${silkscreen.variable} font-display antialiased`}
+        className={`${ethnocentric.className} ${ethnocentric.variable} ${auxMono.variable} ${jetbrainsMono.variable} ${silkscreen.variable} antialiased`}
       >
         <SmoothScroll />
         {children}
