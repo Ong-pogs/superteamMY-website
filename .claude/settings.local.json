@@ -52,7 +52,8 @@
       "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx @gltf-transform/cli inspect public/models/stmy3d_logo.glb 2>&1 | head -150)",
       "Bash(cd \"C:/Project/Solana Website/superteam-my\" && node -e \"\nconst fs = require\\('fs'\\);\nconst buf = fs.readFileSync\\('public/models/stmy3d_logo.glb'\\);\n\n// GLB header: magic\\(4\\) + version\\(4\\) + length\\(4\\) + chunk0_length\\(4\\) + chunk0_type\\(4\\) + JSON...\nconst jsonLen = buf.readUInt32LE\\(12\\);\nconst jsonStr = buf.toString\\('utf8', 20, 20 + jsonLen\\);\nconst gltf = JSON.parse\\(jsonStr\\);\n\nconsole.log\\('=== NODES ==='\\);\n\\(gltf.nodes || []\\).forEach\\(\\(n, i\\) => {\n  console.log\\('Node', i, ':', JSON.stringify\\({\n    name: n.name,\n    mesh: n.mesh,\n    children: n.children,\n    translation: n.translation,\n    rotation: n.rotation,\n    scale: n.scale,\n    matrix: n.matrix\n  }\\)\\);\n}\\);\n\nconsole.log\\('\\\\n=== SCENES ==='\\);\n\\(gltf.scenes || []\\).forEach\\(\\(s, i\\) => {\n  console.log\\('Scene', i, ':', JSON.stringify\\(s\\)\\);\n}\\);\n\nconsole.log\\('\\\\n=== MESHES ==='\\);\n\\(gltf.meshes || []\\).forEach\\(\\(m, i\\) => {\n  console.log\\('Mesh', i, ':', m.name, '- primitives:', m.primitives.length\\);\n}\\);\n\")",
       "Bash(cd \"C:/Users/ongee/Downloads\" && unzip -o heroideapics.zip -d heroideapics 2>&1 && ls heroideapics/)",
-      "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && cmd /c \"npm run dev\" 2>&1 | head -10)"
+      "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && cmd /c \"npm run dev\" 2>&1 | head -10)",
+      "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx next build 2>&1 | tail -60)"
     ]
   }
 }
