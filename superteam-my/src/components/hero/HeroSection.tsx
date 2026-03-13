@@ -22,7 +22,7 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
     if (!animate) return;
     const timers = [
       setTimeout(() => setPhase(1), 100),
-      setTimeout(() => setPhase(2), 900),
+      setTimeout(() => setPhase(2), 1600),
     ];
     return () => timers.forEach(clearTimeout);
   }, [animate]);
@@ -31,18 +31,30 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
   const ease = [0.22, 1, 0.36, 1] as const;
 
   return (
-    <section id="hero" className="relative overflow-x-clip bg-bg-terminal">
-      <div className="flex flex-col lg:flex-row">
+    <section id="hero" className="relative overflow-x-clip" style={{ background: "#D0D0D8" }}>
+      {/* Grey cover — sits on top of everything, drops away to reveal white bg */}
+      <div className="fixed inset-0 overflow-hidden z-50 pointer-events-none">
+        <motion.div
+          className="absolute inset-0"
+          style={{ background: "#B0B0B8" }}
+          initial={{ y: "0%" }}
+          animate={phase >= 1 ? { y: "100%" } : {}}
+          transition={{ duration: 0.7, delay: 0, ease }}
+        />
+      </div>
+
+      <div className="relative flex flex-col lg:flex-row">
 
         {/* ── Left column (scrollable) ── */}
         <div className="flex-1 flex flex-col">
           {/* Panel A — fills viewport height */}
+          <div className="overflow-hidden min-h-[60vh] lg:min-h-[92vh]">
           <motion.div
             className="relative min-h-[60vh] lg:min-h-[92vh] overflow-hidden"
             style={{ background: "#00FFA3" }}
-            initial={{ clipPath: "inset(0 100% 100% 0)" }}
-            animate={phase >= 1 ? { clipPath: "inset(0 0% 0% 0)" } : {}}
-            transition={{ duration: 0.8, ease }}
+            initial={{ y: "-100%" }}
+            animate={phase >= 1 ? { y: "0%" } : {}}
+            transition={{ duration: 0.7, delay: 0.35, ease }}
           >
             {/* Subtle noise texture */}
             <div className="noise-overlay absolute inset-0 opacity-[0.03]" />
@@ -105,6 +117,7 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
               </div>
             </div>
           </motion.div>
+          </div>
 
           {/* Community photo — desktop only */}
           <div className="hidden lg:block relative h-[50vh] overflow-hidden">
@@ -135,13 +148,10 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
           lg:w-[24%] lg:min-w-[280px] xl:min-w-[320px]
           flex flex-col
         ">
-          {/* Panel C */}
-          <motion.div
+          {/* Panel C — static, blends with white overlay */}
+          <div
             className="flex items-end p-6 lg:p-8 lg:pb-10 lg:h-[50vh]"
             style={{ background: "#D0D0D8" }}
-            initial={{ clipPath: "inset(100% 0 0 0)" }}
-            animate={phase >= 1 ? { clipPath: "inset(0 0 0 0)" } : {}}
-            transition={{ duration: 0.7, delay: 0.12, ease }}
           >
             <motion.div
               className="space-y-6 w-full"
@@ -169,16 +179,17 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
                 </div>
               </div>
             </motion.div>
-          </motion.div>
+          </div>
 
           {/* Sticky wrapper for D + G — sticks once Panel C scrolls away */}
           <div className="lg:sticky lg:top-0">
             {/* Panel D */}
+            <div className="overflow-hidden lg:h-[50vh]">
             <motion.div
-              className="bg-bg-terminal p-6 lg:p-8 border-t border-border-dim lg:h-[50vh]"
-              initial={{ clipPath: "inset(0 100% 0 0)" }}
-              animate={phase >= 1 ? { clipPath: "inset(0 0 0 0)" } : {}}
-              transition={{ duration: 0.7, delay: 0.22, ease }}
+              className="bg-bg-terminal p-6 lg:p-8 border-t border-border-dim h-full"
+              initial={{ y: "-100%" }}
+              animate={phase >= 1 ? { y: "0%" } : {}}
+              transition={{ duration: 0.7, delay: 0.55, ease }}
             >
               <motion.div
                 initial={{ opacity: 0 }}
@@ -195,15 +206,17 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
                 <SystemStatus />
               </motion.div>
             </motion.div>
+            </div>
 
             {/* Panel G */}
+            <div className="overflow-hidden lg:h-[50vh]">
             <motion.a
               href="#mission"
-              className="group relative p-6 lg:p-8 flex flex-col justify-between cursor-pointer overflow-hidden lg:h-[50vh]"
+              className="group relative p-6 lg:p-8 flex flex-col justify-between cursor-pointer overflow-hidden h-full"
               style={{ background: "#00FFA3" }}
-              initial={{ clipPath: "inset(0 0 100% 0)" }}
-              animate={phase >= 1 ? { clipPath: "inset(0 0 0% 0)" } : {}}
-              transition={{ duration: 0.6, delay: 0.35, ease }}
+              initial={{ y: "-100%" }}
+              animate={phase >= 1 ? { y: "0%" } : {}}
+              transition={{ duration: 0.6, delay: 0.75, ease }}
             >
               {/* DEBUG LABEL */}
               <span className="px-2 py-0.5 bg-yellow-500 text-black font-mono text-[10px] rounded w-fit">
@@ -233,6 +246,7 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
                 Explore the community.
               </p>
             </motion.a>
+            </div>
           </div>
           {/* Spacer — fills sidebar alongside 3 boxes with terminal bg so Panel G doesn't poke out */}
           <div className="hidden lg:block flex-1 bg-bg-terminal" />

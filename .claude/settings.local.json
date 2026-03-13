@@ -55,7 +55,10 @@
       "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && cmd /c \"npm run dev\" 2>&1 | head -10)",
       "Bash(cd \"C:/Project/Solana Website/superteam-my\" && npx next build 2>&1 | tail -60)",
       "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && npm ls lenis 2>&1 || true)",
-      "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && npm install lenis 2>&1)"
+      "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && npm install lenis 2>&1)",
+      "Bash(ls -lah \"C:\\\\Project\\\\Solana Website\\\\superteam-my\\\\public\\\\models\\\\\" 2>/dev/null || echo \"No models directory\")",
+      "Bash(cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && npx next build 2>&1 | tail -50)",
+      "Bash(rm -f \"C:\\\\Project\\\\Solana Website\\\\superteam-my/.next/lock\" && cd \"C:\\\\Project\\\\Solana Website\\\\superteam-my\" && npx next build 2>&1 | tail -5)"
     ]
   }
 }

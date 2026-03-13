@@ -1,31 +1,33 @@
 "use client";
 
+import { Suspense, useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { Canvas } from "@react-three/fiber";
+import * as THREE from "three";
 import { cn } from "@/lib/utils";
 import SectionLabel from "@/components/ui/SectionLabel";
 import CRTFrame from "@/components/layout/CRTFrame";
 import ScanlineOverlay from "@/components/effects/ScanlineOverlay";
+import MonitorPyramid from "@/components/3d/MonitorPyramid";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+
+// ─── Data ────────────────────────────────────────────────
 
 interface Partner {
   id: string;
   name: string;
-  logo_url: string;
-  website_url: string | null;
   category: string;
-  display_order: number;
-  is_active: boolean;
-  created_at: string;
 }
 
 const MOCK_PARTNERS: Partner[] = [
-  { id: "1", name: "Solana Foundation", logo_url: "", website_url: "#", category: "ecosystem", display_order: 1, is_active: true, created_at: "" },
-  { id: "2", name: "Jupiter", logo_url: "", website_url: "#", category: "defi", display_order: 2, is_active: true, created_at: "" },
-  { id: "3", name: "Tensor", logo_url: "", website_url: "#", category: "nft", display_order: 3, is_active: true, created_at: "" },
-  { id: "4", name: "Marinade", logo_url: "", website_url: "#", category: "defi", display_order: 4, is_active: true, created_at: "" },
-  { id: "5", name: "Helius", logo_url: "", website_url: "#", category: "infra", display_order: 5, is_active: true, created_at: "" },
-  { id: "6", name: "Phantom", logo_url: "", website_url: "#", category: "wallet", display_order: 6, is_active: true, created_at: "" },
-  { id: "7", name: "Jito", logo_url: "", website_url: "#", category: "defi", display_order: 7, is_active: true, created_at: "" },
-  { id: "8", name: "Squads", logo_url: "", website_url: "#", category: "infra", display_order: 8, is_active: true, created_at: "" },
+  { id: "1", name: "Solana Foundation", category: "ecosystem" },
+  { id: "2", name: "Jupiter", category: "defi" },
+  { id: "3", name: "Tensor", category: "nft" },
+  { id: "4", name: "Marinade", category: "defi" },
+  { id: "5", name: "Helius", category: "infra" },
+  { id: "6", name: "Phantom", category: "wallet" },
+  { id: "7", name: "Jito", category: "defi" },
+  { id: "8", name: "Squads", category: "infra" },
 ];
 
 const CRT_COLORS: Array<"green" | "purple" | "blue" | "gold"> = [
@@ -66,14 +68,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   wallet: "Wallet",
 };
 
-const containerVariants = {
-  hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
+// ─── Mobile Fallback (2D CRTFrame grid) ──────────────────
 
 const itemVariants = {
   hidden: { opacity: 0, y: 30, scale: 0.95 },
@@ -85,7 +80,120 @@ const itemVariants = {
   },
 };
 
+function MobilePartners() {
+  return (
+    <motion.div
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, margin: "-100px" }}
+      transition={{ staggerChildren: 0.1 }}
+      className="grid grid-cols-2 gap-4"
+    >
+      {MOCK_PARTNERS.map((partner, index) => {
+        const color = CRT_COLORS[index % CRT_COLORS.length];
+        const glowStyle = GLOW_STYLES[color];
+
+        return (
+          <motion.div key={partner.id} variants={itemVariants}>
+            <CRTFrame
+              title={`CH-${String(index + 1).padStart(2, "0")}`}
+              color={color}
+              showDots={true}
+            >
+              <div className="relative flex flex-col items-center justify-center py-8 px-3 min-h-[120px] bg-bg-terminal/50">
+                <div
+                  className={cn(
+                    "font-display text-sm font-black text-center tracking-tight",
+                    glowStyle.text,
+                    glowStyle.glow
+                  )}
+                >
+                  {partner.name}
+                </div>
+                <div className="mt-2 font-mono text-[0.45rem] text-text-secondary/40 tracking-[0.15em] uppercase">
+                  [{CATEGORY_LABELS[partner.category] || partner.category}]
+                </div>
+              </div>
+            </CRTFrame>
+          </motion.div>
+        );
+      })}
+    </motion.div>
+  );
+}
+
+// ─── 3D Canvas Loading Fallback ──────────────────────────
+
+function CanvasLoader() {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center">
+      <div className="font-mono text-[0.65rem] text-sol-green/40 tracking-[0.15em] animate-pulse">
+        // LOADING_3D_MONITORS...
+      </div>
+    </div>
+  );
+}
+
+// ─── Desktop 3D View ─────────────────────────────────────
+
+function DesktopPartners() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "-50px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <motion.div
+      ref={containerRef}
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, ease: "easeOut" as const }}
+      viewport={{ once: true, margin: "-80px" }}
+      className="relative w-full mx-auto"
+      style={{ aspectRatio: "16 / 9", maxHeight: "520px" }}
+    >
+      {/* R3F Canvas */}
+      <Canvas
+        camera={{ position: [0, 0.5, 3.5], fov: 40 }}
+        dpr={[1, 1.5]}
+        gl={{ alpha: true, antialias: true, toneMapping: THREE.NoToneMapping }}
+        style={{ background: "transparent" }}
+      >
+        <Suspense fallback={null}>
+          <MonitorPyramid visible={inView} />
+        </Suspense>
+      </Canvas>
+
+      {/* Scanline overlay on top of Canvas */}
+      <div className="absolute inset-0 pointer-events-none z-10">
+        <ScanlineOverlay />
+      </div>
+
+      {/* Loading fallback (hidden once in view) */}
+      {!inView && <CanvasLoader />}
+    </motion.div>
+  );
+}
+
+// ─── Main Section ────────────────────────────────────────
+
 export default function PartnersSection() {
+  const isMobile = useMediaQuery("(max-width: 768px)");
+
   return (
     <section id="partners" className="relative py-24 px-6">
       <div className="mx-auto max-w-7xl space-y-12">
@@ -101,65 +209,8 @@ export default function PartnersSection() {
           </p>
         </div>
 
-        {/* CRT Monitor Grid */}
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"
-        >
-          {MOCK_PARTNERS.map((partner, index) => {
-            const color = CRT_COLORS[index % CRT_COLORS.length];
-            const glowStyle = GLOW_STYLES[color];
-
-            return (
-              <motion.div key={partner.id} variants={itemVariants}>
-                <a
-                  href={partner.website_url || "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group block"
-                >
-                  <CRTFrame
-                    title={`CH-${String(index + 1).padStart(2, "0")}`}
-                    color={color}
-                    showDots={true}
-                    className={cn(
-                      "transition-all duration-300",
-                      "group-hover:shadow-[0_0_30px_rgba(0,255,163,0.15)]",
-                      color === "purple" && "group-hover:shadow-[0_0_30px_rgba(153,69,255,0.15)]",
-                      color === "blue" && "group-hover:shadow-[0_0_30px_rgba(20,241,149,0.15)]",
-                      color === "gold" && "group-hover:shadow-[0_0_30px_rgba(255,184,0,0.15)]"
-                    )}
-                  >
-                    <div className="relative flex flex-col items-center justify-center py-10 px-4 min-h-[160px] bg-bg-terminal/50 transition-colors duration-300 group-hover:bg-bg-terminal/80">
-                      {/* Partner name as large stylized text */}
-                      <div
-                        className={cn(
-                          "font-display text-lg md:text-xl font-black text-center tracking-tight transition-all duration-300",
-                          glowStyle.text,
-                          glowStyle.glow,
-                          glowStyle.hoverGlow
-                        )}
-                      >
-                        {partner.name}
-                      </div>
-
-                      {/* Category tag */}
-                      <div className="mt-3 font-mono text-[0.5rem] text-text-secondary/40 tracking-[0.15em] uppercase transition-colors duration-300 group-hover:text-text-secondary/60">
-                        [{CATEGORY_LABELS[partner.category] || partner.category}]
-                      </div>
-
-                      {/* Hover brightness overlay */}
-                      <div className="absolute inset-0 bg-white/0 group-hover:bg-white/[0.03] transition-colors duration-300 pointer-events-none" />
-                    </div>
-                  </CRTFrame>
-                </a>
-              </motion.div>
-            );
-          })}
-        </motion.div>
+        {/* 3D on desktop, 2D grid on mobile */}
+        {isMobile ? <MobilePartners /> : <DesktopPartners />}
 
         {/* Bottom status bar */}
         <div className="flex items-center justify-between pt-4 border-t border-border-dim">

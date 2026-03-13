@@ -17,8 +17,9 @@ import JoinCTA from "@/components/sections/JoinCTA";
 import EventsSection from "@/components/sections/EventsSection";
 
 export default function Home() {
-  const [entered, setEntered] = useState(false);
-  const [revealing, setRevealing] = useState(false);
+  // TODO: RESTORE 3D ROOM BEFORE SUBMISSION — temporarily bypassed for dev
+  const [entered, setEntered] = useState(true);
+  const [revealing, setRevealing] = useState(true);
   const siteRef = useRef<HTMLDivElement>(null);
 
   // Safety: clear any leftover inline clip-path after transition
