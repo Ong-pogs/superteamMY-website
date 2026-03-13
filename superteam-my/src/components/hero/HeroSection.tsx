@@ -38,7 +38,7 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
         <div className="flex-1 flex flex-col">
           {/* Panel A — fills viewport height */}
           <motion.div
-            className="relative min-h-[60vh] lg:min-h-[82vh] overflow-hidden"
+            className="relative min-h-[60vh] lg:min-h-[92vh] overflow-hidden"
             style={{ background: "#00FFA3" }}
             initial={{ clipPath: "inset(0 100% 100% 0)" }}
             animate={phase >= 1 ? { clipPath: "inset(0 0% 0% 0)" } : {}}
@@ -127,6 +127,7 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
               <span className="font-mono text-text-secondary text-xs">03</span>
             </div>
           </div>
+
         </div>
 
         {/* ── Right sidebar (sticky) ── */}
@@ -233,6 +234,8 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
               </p>
             </motion.a>
           </div>
+          {/* Spacer — fills sidebar alongside 3 boxes with terminal bg so Panel G doesn't poke out */}
+          <div className="hidden lg:block flex-1 bg-bg-terminal" />
         </div>
 
       </div>

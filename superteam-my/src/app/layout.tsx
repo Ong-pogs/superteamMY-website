@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Outfit, JetBrains_Mono, Silkscreen } from "next/font/google";
+import SmoothScroll from "@/components/layout/SmoothScroll";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -52,6 +53,7 @@ export default function RootLayout({
       <body
         className={`${outfit.variable} ${jetbrainsMono.variable} ${silkscreen.variable} font-display antialiased`}
       >
+        <SmoothScroll />
         {children}
       </body>
     </html>

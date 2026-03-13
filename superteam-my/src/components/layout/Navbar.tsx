@@ -24,8 +24,18 @@ export default function Navbar() {
 
   // Lock body scroll when menu is open
   useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    if (open) {
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      document.body.style.overflow = "hidden";
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    } else {
+      document.body.style.overflow = "";
+      document.body.style.paddingRight = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.paddingRight = "";
+    };
   }, [open]);
 
   return (
@@ -108,7 +118,7 @@ export default function Navbar() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.97 }}
               transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="fixed z-[70] w-[min(520px,90vw)] bg-[#D0D0D8] rounded-2xl overflow-auto max-h-[80vh] top-20 left-1/2 -translate-x-1/2 shadow-2xl"
+              className="fixed z-[70] w-[min(520px,90vw)] bg-[#D0D0D8] rounded-2xl overflow-auto max-h-[80vh] top-16 right-6 md:right-10 lg:right-14 shadow-2xl"
             >
               {/* Nav links — large bold typography */}
               <div className="px-8 md:px-12 pt-10 pb-12 space-y-2">
