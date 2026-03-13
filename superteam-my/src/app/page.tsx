@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 
 import Navbar from "@/components/layout/Navbar";
-import LeftRail from "@/components/layout/LeftRail";
+// import LeftRail from "@/components/layout/LeftRail";
 import Footer from "@/components/layout/Footer";
 import EntryTransition from "@/components/entry/EntryTransition";
 import HeroSection from "@/components/hero/HeroSection";
@@ -58,7 +58,6 @@ export default function Home() {
           }}
         >
           <Navbar />
-          <LeftRail />
 
           <main>
             <HeroSection animate={revealing || entered} />

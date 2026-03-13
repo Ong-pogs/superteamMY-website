@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useMemo, useState, useEffect, useCallback } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useRef, useMemo, useState, useEffect } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useControls, button } from "leva";
 import CRTMonitor from "./CRTMonitor";
@@ -28,6 +28,197 @@ const DEFAULT_SPEAKERS: { pos: [number, number, number]; rot: [number, number, n
   { pos: [-1.55, 0.0, 0.1], rot: [0, 0.15, 0], scale: 1 },
   { pos: [1.55, 0.0, 0.1], rot: [0, -0.15, 0], scale: 1 },
 ];
+
+// ─── Scripted physics simulation ────────────────────────
+
+const GRAVITY = -12;
+const BOUNCE = 0.35;
+const ROT_DAMPING = 0.92;
+const SETTLE_THRESHOLD = 0.002;
+const DROP_HEIGHT = 3.5;
+
+interface PhysicsBody {
+  y: number;
+  vy: number;
+  targetY: number;
+  rotVelX: number;
+  rotVelZ: number;
+  rotOffsetX: number;
+  rotOffsetZ: number;
+  settled: boolean;
+  delay: number;
+  started: boolean;
+}
+
+function createBodies(
+  count: number,
+  targetYs: number[],
+  staggerBase: number,
+  staggerStep: number
+): PhysicsBody[] {
+  return Array.from({ length: count }, (_, i) => {
+    const seed = Math.sin(i * 73.17 + 31.4) * 10000;
+    const pseudoRand = seed - Math.floor(seed);
+    return {
+      y: targetYs[i] + DROP_HEIGHT + pseudoRand * 0.8,
+      vy: 0,
+      targetY: targetYs[i],
+      rotVelX: (pseudoRand - 0.5) * 0.8,
+      rotVelZ: ((Math.sin(i * 127.3) * 10000) % 1 - 0.5) * 0.6,
+      rotOffsetX: 0,
+      rotOffsetZ: 0,
+      settled: false,
+      delay: staggerBase + i * staggerStep,
+      started: false,
+    };
+  });
+}
+
+function stepBody(body: PhysicsBody, dt: number, elapsed: number): void {
+  if (body.settled) return;
+  if (elapsed < body.delay) return;
+  if (!body.started) body.started = true;
+
+  body.vy += GRAVITY * dt;
+  body.y += body.vy * dt;
+
+  if (body.y <= body.targetY) {
+    body.y = body.targetY;
+    body.vy = -body.vy * BOUNCE;
+    const impactForce = Math.abs(body.vy) * 0.15;
+    body.rotVelX += (body.rotVelX > 0 ? 1 : -1) * impactForce * 0.3;
+    body.rotVelZ += (body.rotVelZ > 0 ? 1 : -1) * impactForce * 0.3;
+
+    if (Math.abs(body.vy) < SETTLE_THRESHOLD) {
+      body.y = body.targetY;
+      body.vy = 0;
+      body.rotOffsetX = 0;
+      body.rotOffsetZ = 0;
+      body.rotVelX = 0;
+      body.rotVelZ = 0;
+      body.settled = true;
+      return;
+    }
+  }
+
+  body.rotOffsetX += body.rotVelX * dt;
+  body.rotOffsetZ += body.rotVelZ * dt;
+  body.rotVelX *= ROT_DAMPING;
+  body.rotVelZ *= ROT_DAMPING;
+}
+
+// ─── Camera Rig ─────────────────────────────────────────
+// Always drives the camera. In edit mode you tweak via leva;
+// in normal mode the defaults give the corner view.
+
+function CameraRig({ debug }: { debug: boolean }) {
+  const { camera } = useThree();
+  const lastFovRef = useRef(40);
+
+  // Defaults: angled corner view — camera looks into where the two walls meet
+  const cam = useControls(
+    "Camera",
+    {
+      posX: { value: 1.8, min: -10, max: 10, step: 0.05 },
+      posY: { value: 1.0, min: -5, max: 10, step: 0.05 },
+      posZ: { value: 3.8, min: -5, max: 15, step: 0.05 },
+      lookX: { value: -0.3, min: -5, max: 5, step: 0.05 },
+      lookY: { value: 0.1, min: -5, max: 5, step: 0.05 },
+      lookZ: { value: -0.5, min: -5, max: 5, step: 0.05 },
+      fov: { value: 40, min: 10, max: 120, step: 1 },
+    },
+    { collapsed: true }
+  );
+
+  // Apply camera on every frame so it's always in sync
+  useFrame(() => {
+    const perspCam = camera as THREE.PerspectiveCamera;
+    perspCam.position.set(cam.posX, cam.posY, cam.posZ);
+    perspCam.lookAt(cam.lookX, cam.lookY, cam.lookZ);
+    if (lastFovRef.current !== cam.fov) {
+      perspCam.fov = cam.fov;
+      perspCam.updateProjectionMatrix();
+      lastFovRef.current = cam.fov;
+    }
+  });
+
+  return null;
+}
+
+// ─── Room Corner (floor + back wall + side wall) ────────
+// Walls meet at a corner. Objects sit in the corner.
+
+function Room() {
+  const floor = useControls(
+    "Floor",
+    {
+      posX: { value: 0, min: -5, max: 5, step: 0.01 },
+      posY: { value: -0.55, min: -3, max: 3, step: 0.01 },
+      posZ: { value: 0, min: -5, max: 5, step: 0.01 },
+      width: { value: 8, min: 1, max: 20, step: 0.1 },
+      depth: { value: 6, min: 1, max: 20, step: 0.1 },
+      color: { value: "#0a0a12" },
+      roughness: { value: 0.95, min: 0, max: 1, step: 0.01 },
+    },
+    { collapsed: true }
+  );
+
+  const backWall = useControls(
+    "Back Wall",
+    {
+      posX: { value: 0, min: -5, max: 5, step: 0.01 },
+      posY: { value: 1.7, min: -3, max: 8, step: 0.01 },
+      posZ: { value: -1.0, min: -5, max: 5, step: 0.01 },
+      width: { value: 8, min: 1, max: 20, step: 0.1 },
+      height: { value: 5, min: 1, max: 10, step: 0.1 },
+      color: { value: "#08080e" },
+      roughness: { value: 0.98, min: 0, max: 1, step: 0.01 },
+    },
+    { collapsed: true }
+  );
+
+  const sideWall = useControls(
+    "Side Wall",
+    {
+      posX: { value: -2.5, min: -10, max: 5, step: 0.01 },
+      posY: { value: 1.7, min: -3, max: 8, step: 0.01 },
+      posZ: { value: 0, min: -5, max: 5, step: 0.01 },
+      depth: { value: 6, min: 1, max: 20, step: 0.1 },
+      height: { value: 5, min: 1, max: 10, step: 0.1 },
+      color: { value: "#0a0a10" },
+      roughness: { value: 0.96, min: 0, max: 1, step: 0.01 },
+    },
+    { collapsed: true }
+  );
+
+  return (
+    <>
+      {/* Floor */}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[floor.posX, floor.posY, floor.posZ]}
+      >
+        <planeGeometry args={[floor.width, floor.depth]} />
+        <meshStandardMaterial color={floor.color} roughness={floor.roughness} metalness={0.05} />
+      </mesh>
+
+      {/* Back wall — faces toward camera (+Z) */}
+      <mesh position={[backWall.posX, backWall.posY, backWall.posZ]}>
+        <planeGeometry args={[backWall.width, backWall.height]} />
+        <meshStandardMaterial color={backWall.color} roughness={backWall.roughness} metalness={0.02} />
+      </mesh>
+
+      {/* Side wall — faces right (+X), placed on the left */}
+      <mesh
+        rotation={[0, Math.PI / 2, 0]}
+        position={[sideWall.posX, sideWall.posY, sideWall.posZ]}
+      >
+        <planeGeometry args={[sideWall.depth, sideWall.height]} />
+        <meshStandardMaterial color={sideWall.color} roughness={sideWall.roughness} metalness={0.02} />
+      </mesh>
+    </>
+  );
+}
 
 // ─── Leva hook per object ───────────────────────────────
 
@@ -65,7 +256,7 @@ export default function MonitorPyramid({ visible = true }: MonitorPyramidProps) 
   const groupRef = useRef<THREE.Group>(null);
   const { textures, colors } = useMonitorTextures();
   const [entered, setEntered] = useState(false);
-  const entryProgressRef = useRef<number[]>(new Array(8).fill(0));
+  const startTimeRef = useRef<number | null>(null);
 
   // ── Master debug toggle ──
   const { debug } = useControls("Scene", {
@@ -87,6 +278,23 @@ export default function MonitorPyramid({ visible = true }: MonitorPyramidProps) 
   const allMonitors = [m0, m1, m2, m3, m4, m5, m6, m7];
   const allSpeakers = [s0, s1];
 
+  // ── Physics bodies ──
+  const bodiesRef = useRef<PhysicsBody[] | null>(null);
+  const allSettledRef = useRef(false);
+
+  useEffect(() => {
+    if (entered && !debug) {
+      const monTargetYs = DEFAULT_MONITORS.map((m) => m.pos[1]);
+      const spkTargetYs = DEFAULT_SPEAKERS.map((s) => s.pos[1]);
+      bodiesRef.current = [
+        ...createBodies(8, monTargetYs, 0, 0.12),
+        ...createBodies(2, spkTargetYs, 0.15, 0.2),
+      ];
+      allSettledRef.current = false;
+      startTimeRef.current = null;
+    }
+  }, [entered, debug]);
+
   // ── Log button ──
   useControls("Scene", {
     "Log All Positions": button(() => {
@@ -104,23 +312,15 @@ export default function MonitorPyramid({ visible = true }: MonitorPyramidProps) 
       }));
 
       console.log("\n========== SCENE LAYOUT ==========");
-      console.log("MONITORS:");
-      console.log(JSON.stringify(monitorData, null, 2));
-      console.log("SPEAKERS:");
-      console.log(JSON.stringify(speakerData, null, 2));
+      console.log("MONITORS:", JSON.stringify(monitorData, null, 2));
+      console.log("SPEAKERS:", JSON.stringify(speakerData, null, 2));
       console.log("==================================\n");
-
-      // Also log as copy-pasteable code
       console.log("// ── Copy-paste arrays ──");
       console.log("const MONITORS = [");
-      monitorData.forEach((m) => {
-        console.log(`  { pos: [${m.pos}], rot: [${m.rot}] },`);
-      });
+      monitorData.forEach((m) => console.log(`  { pos: [${m.pos}], rot: [${m.rot}] },`));
       console.log("];");
       console.log("const SPEAKERS = [");
-      speakerData.forEach((s) => {
-        console.log(`  { pos: [${s.pos}], rot: [${s.rot}], scale: ${s.scale} },`);
-      });
+      speakerData.forEach((s) => console.log(`  { pos: [${s.pos}], rot: [${s.rot}], scale: ${s.scale} },`));
       console.log("];");
     }),
   });
@@ -140,7 +340,6 @@ export default function MonitorPyramid({ visible = true }: MonitorPyramidProps) 
     return () => { Object.values(materials).forEach((m) => m.dispose()); };
   }, [materials]);
 
-  // Entrance animation
   useEffect(() => {
     if (visible) {
       const timer = setTimeout(() => setEntered(true), 200);
@@ -152,39 +351,84 @@ export default function MonitorPyramid({ visible = true }: MonitorPyramidProps) 
     if (!groupRef.current) return;
     const t = clock.getElapsedTime();
 
-    // Disable idle sway in debug mode so positions are accurate
-    if (!debug) {
+    if (!debug && allSettledRef.current) {
       groupRef.current.rotation.y = Math.sin(t * 0.08) * 0.06;
-    } else {
+    } else if (debug) {
       groupRef.current.rotation.y = 0;
     }
 
-    // Skip entrance animation in debug mode
-    if (!debug && entered) {
+    // ── Physics step ──
+    if (!debug && entered && bodiesRef.current && !allSettledRef.current) {
+      if (startTimeRef.current === null) startTimeRef.current = t;
+      const elapsed = t - startTimeRef.current;
+      const dt = Math.min(1 / 30, clock.getDelta() || 1 / 60);
+
+      let allDone = true;
+      const bodies = bodiesRef.current;
       const children = groupRef.current.children;
-      for (let i = 0; i < 8 && i < children.length; i++) {
-        const progress = entryProgressRef.current[i];
-        if (progress < 1) {
-          const staggerDelay = i * 0.08;
-          const elapsed = t - staggerDelay;
-          if (elapsed > 0) {
-            entryProgressRef.current[i] = Math.min(1, progress + 0.035);
+
+      for (let i = 0; i < bodies.length; i++) {
+        const body = bodies[i];
+        stepBody(body, dt, elapsed);
+        if (!body.settled) allDone = false;
+
+        if (children[i]) {
+          const child = children[i];
+          if (body.started) {
+            child.position.y = body.y;
+            if (i < 8) {
+              child.position.x = allMonitors[i].posX;
+              child.position.z = allMonitors[i].posZ;
+              child.rotation.x = allMonitors[i].rotX + body.rotOffsetX;
+              child.rotation.y = allMonitors[i].rotY;
+              child.rotation.z = allMonitors[i].rotZ + body.rotOffsetZ;
+            } else {
+              const si = i - 8;
+              child.position.x = allSpeakers[si].posX;
+              child.position.z = allSpeakers[si].posZ;
+              child.rotation.x = allSpeakers[si].rotX + body.rotOffsetX;
+              child.rotation.y = allSpeakers[si].rotY;
+              child.rotation.z = allSpeakers[si].rotZ + body.rotOffsetZ;
+            }
+          } else {
+            child.position.y = (i < 8 ? allMonitors[i].posY : allSpeakers[i - 8].posY) + DROP_HEIGHT + 2;
           }
-          const p = entryProgressRef.current[i];
-          const eased = 1 - Math.pow(1 - p, 3);
-          const targetY = allMonitors[i].posY;
-          children[i].position.y = targetY + 2 * (1 - eased);
+        }
+      }
+
+      if (allDone) {
+        allSettledRef.current = true;
+        for (let i = 0; i < children.length; i++) {
+          if (i < 8) {
+            children[i].position.set(allMonitors[i].posX, allMonitors[i].posY, allMonitors[i].posZ);
+            children[i].rotation.set(allMonitors[i].rotX, allMonitors[i].rotY, allMonitors[i].rotZ);
+          } else if (i - 8 < allSpeakers.length) {
+            const si = i - 8;
+            children[i].position.set(allSpeakers[si].posX, allSpeakers[si].posY, allSpeakers[si].posZ);
+            children[i].rotation.set(allSpeakers[si].rotX, allSpeakers[si].rotY, allSpeakers[si].rotZ);
+          }
         }
       }
     }
   });
 
-  // Helper to get pos/rot from controls
   const monPos = (c: typeof m0): [number, number, number] => [c.posX, c.posY, c.posZ];
   const monRot = (c: typeof m0): [number, number, number] => [c.rotX, c.rotY, c.rotZ];
 
+  const getMonitorPos = (ctrl: typeof m0): [number, number, number] => {
+    if (debug) return monPos(ctrl);
+    if (!entered) return [ctrl.posX, ctrl.posY + DROP_HEIGHT + 2, ctrl.posZ];
+    return monPos(ctrl);
+  };
+
   return (
     <>
+      {/* Camera rig — only active in debug mode */}
+      <CameraRig debug={debug} />
+
+      {/* Room geometry */}
+      <Room />
+
       {/* Lighting */}
       <ambientLight intensity={0.35} />
       <directionalLight position={[2, 3, 4]} intensity={0.8} />
@@ -193,29 +437,22 @@ export default function MonitorPyramid({ visible = true }: MonitorPyramidProps) 
 
       <group ref={groupRef} position={[0, -0.3, 0]}>
         {/* Monitors */}
-        {allMonitors.map((ctrl, i) => {
-          const pos = monPos(ctrl);
-          const rot = monRot(ctrl);
-          // In non-debug mode with entrance animation not done, offset Y
-          const finalPos: [number, number, number] =
-            !debug && !entered ? [pos[0], pos[1] + 2, pos[2]] : pos;
-          return (
-            <CRTMonitor
-              key={`mon-${i}`}
-              position={finalPos}
-              rotation={rot}
-              screenTexture={textures[i]}
-              emissiveColor={colors[i]}
-              materials={materials}
-            />
-          );
-        })}
+        {allMonitors.map((ctrl, i) => (
+          <CRTMonitor
+            key={`mon-${i}`}
+            position={getMonitorPos(ctrl)}
+            rotation={monRot(ctrl)}
+            screenTexture={textures[i]}
+            emissiveColor={colors[i]}
+            materials={materials}
+          />
+        ))}
 
         {/* Speakers */}
         {allSpeakers.map((ctrl, i) => (
           <Speaker
             key={`spk-${i}`}
-            position={monPos(ctrl)}
+            position={debug ? monPos(ctrl) : [ctrl.posX, !entered ? ctrl.posY + DROP_HEIGHT + 2 : ctrl.posY, ctrl.posZ]}
             rotation={monRot(ctrl)}
             scale={ctrl.scale}
           />

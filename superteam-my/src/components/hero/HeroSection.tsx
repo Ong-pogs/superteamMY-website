@@ -5,6 +5,7 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import LanguageSwap from "./LanguageSwap";
 import SystemStatus from "./SystemStatus";
 import GlassShatter from "@/components/effects/GlassShatter";
+import MalaysiaMap from "./MalaysiaMap";
 
 interface HeroSectionProps {
   animate?: boolean;
@@ -77,8 +78,8 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
               <GlassShatter />
             </div>
 
-            {/* Text container — positioned lower, like Shift5 */}
-            <div className="relative h-full flex flex-col justify-end px-6 sm:px-10 md:px-14 lg:px-16 xl:px-20 pb-8 lg:pb-[5%] pt-24 lg:pt-0">
+            {/* Text container — centered-low, like Shift5 */}
+            <div className="relative h-full flex flex-col justify-center px-6 sm:px-10 md:px-14 lg:px-16 xl:px-20 pt-24 lg:pt-[20vh]">
               {/* Text + subtitle wrapper for relative positioning */}
               <div className="relative">
                 {/* SUPER// — masked slide-up */}
@@ -107,21 +108,8 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
                   </motion.h1>
                 </div>
 
-                {/* Subtitle B — positioned to the right of "SUPER//", aligned with its top */}
-                <motion.div
-                  className="mt-4 max-w-[300px] lg:absolute lg:left-[52%] xl:left-[48%] lg:top-[0.2em] lg:mt-0 lg:max-w-[240px] xl:max-w-[280px]"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={phase >= 2 ? { opacity: 1, y: 0 } : {}}
-                  transition={{ duration: 0.6, delay: 0.35 }}
-                >
-                  {/* DEBUG LABEL */}
-                  <span className="px-2 py-0.5 bg-orange-500 text-white font-mono text-[10px] rounded">
-                    B — Subtitle
-                  </span>
-                  <p className="font-display text-sm xl:text-base text-[#0A0A0F]/50 leading-relaxed mt-1">
-                    The Home for Solana Builders in Malaysia. Every Developer, Every Designer, Every Founder.
-                  </p>
-                </motion.div>
+                {/* Malaysia map outline — Peninsular + East Malaysia */}
+                <MalaysiaMap className="absolute right-4 lg:right-8 bottom-4 lg:bottom-8 w-[250px] lg:w-[500px] xl:w-[650px] opacity-[0.12]" />
               </div>
             </div>
           </motion.div>
@@ -137,40 +125,31 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
             />
           </div>
 
-          {/* 3 pillar boxes — desktop only */}
+          {/* 3 pillar boxes — Shift5 style */}
           <div className="hidden lg:grid grid-cols-3">
-            <div className="aspect-square bg-sol-green/10 border border-border-dim p-6 flex flex-col justify-between">
-              <span className="font-mono text-sol-green text-xs">01</span>
-              <div>
-                <h4 className="font-display font-bold text-text-primary text-lg mb-2">BUILD</h4>
-                <ul className="font-mono text-text-secondary text-xs space-y-1">
-                  <li>// Grants & funding</li>
-                  <li>// Bounties & jobs</li>
-                  <li>// Builder support</li>
-                </ul>
-              </div>
+            <div className="border-r border-border-dim p-12 lg:p-16 py-16 lg:py-24" style={{ background: "#D0D0D8" }}>
+              <h4 className="font-display font-bold text-[#0A0A0F] text-2xl xl:text-3xl leading-tight mb-10">
+                Build on Solana with Grants, Bounties & Support
+              </h4>
+              <p className="font-mono text-[#0A0A0F]/50 text-xs uppercase leading-relaxed">
+                Builder support & mentorship program with direct access to grants, funding opportunities, and paid bounties for developers and creators.
+              </p>
             </div>
-            <div className="aspect-square bg-sol-purple/10 border border-border-dim p-6 flex flex-col justify-between">
-              <span className="font-mono text-sol-purple text-xs">02</span>
-              <div>
-                <h4 className="font-display font-bold text-text-primary text-lg mb-2">LEARN</h4>
-                <ul className="font-mono text-text-secondary text-xs space-y-1">
-                  <li>// Education</li>
-                  <li>// Workshops</li>
-                  <li>// Mentorship</li>
-                </ul>
-              </div>
+            <div className="border-r border-border-dim p-12 lg:p-16 py-16 lg:py-24" style={{ background: "#D0D0D8" }}>
+              <h4 className="font-display font-bold text-[#0A0A0F] text-2xl xl:text-3xl leading-tight mb-10">
+                Learn Through Workshops & Hands-On Education
+              </h4>
+              <p className="font-mono text-[#0A0A0F]/50 text-xs uppercase leading-relaxed">
+                Structured education pathways, intensive workshops, and one-on-one mentorship to accelerate your Solana development skills.
+              </p>
             </div>
-            <div className="aspect-square bg-gold-accent/10 border border-border-dim p-6 flex flex-col justify-between">
-              <span className="font-mono text-gold-accent text-xs">03</span>
-              <div>
-                <h4 className="font-display font-bold text-text-primary text-lg mb-2">CONNECT</h4>
-                <ul className="font-mono text-text-secondary text-xs space-y-1">
-                  <li>// Events & hackathons</li>
-                  <li>// Ecosystem access</li>
-                  <li>// Community</li>
-                </ul>
-              </div>
+            <div className="p-12 lg:p-16 py-16 lg:py-24" style={{ background: "#D0D0D8" }}>
+              <h4 className="font-display font-bold text-[#0A0A0F] text-2xl xl:text-3xl leading-tight mb-10">
+                Connect at Events & Hackathons Across Malaysia
+              </h4>
+              <p className="font-mono text-[#0A0A0F]/50 text-xs uppercase leading-relaxed">
+                Regular community events, hackathons, and ecosystem meetups connecting you to founders, investors, and builders across Southeast Asia.
+              </p>
             </div>
           </div>
 
@@ -231,10 +210,10 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
               >
                 {/* DEBUG LABEL */}
                 <span className="px-2 py-0.5 bg-green-600 text-white font-mono text-[10px] rounded">
-                  D — System Status Panel
+                  D — Community Status Panel
                 </span>
                 <h3 className="font-display font-bold text-lg xl:text-xl text-text-primary mb-5 mt-2">
-                  System Status
+                  Community Status
                 </h3>
                 <SystemStatus />
               </motion.div>

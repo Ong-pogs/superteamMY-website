@@ -204,7 +204,7 @@ export default function PartnersSection() {
       {/* Full-bleed R3F Canvas */}
       <div className="absolute inset-0">
         <Canvas
-          camera={{ position: [0, 0.5, 3.5], fov: 40 }}
+          camera={{ position: [1.8, 1.0, 3.8], fov: 40 }}
           dpr={[1, 1.5]}
           gl={{ alpha: true, antialias: true, toneMapping: THREE.NoToneMapping }}
           style={{ background: "transparent" }}
