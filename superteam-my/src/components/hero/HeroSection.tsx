@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
 import LanguageSwap from "./LanguageSwap";
 import SystemStatus from "./SystemStatus";
 import GlassShatter from "@/components/effects/GlassShatter";
@@ -22,13 +22,21 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
     if (!animate) return;
     const timers = [
       setTimeout(() => setPhase(1), 100),
-      setTimeout(() => setPhase(2), 1600),
+      setTimeout(() => setPhase(2), 1300),
     ];
     return () => timers.forEach(clearTimeout);
   }, [animate]);
 
 
-  const ease = [0.22, 1, 0.36, 1] as const;
+  const ease = [0.16, 1, 0.3, 1] as const;
+
+  // Parallax for community photo
+  const imgRef = useRef(null);
+  const { scrollYProgress: imgScroll } = useScroll({
+    target: imgRef,
+    offset: ["start end", "end start"],
+  });
+  const imgY = useTransform(imgScroll, [0, 1], ["-15%", "15%"]);
 
   return (
     <section id="hero" className="relative overflow-x-clip" style={{ background: "#D0D0D8" }}>
@@ -39,7 +47,7 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
           style={{ background: "#B0B0B8" }}
           initial={{ y: "0%" }}
           animate={phase >= 1 ? { y: "100%" } : {}}
-          transition={{ duration: 0.7, delay: 0, ease }}
+          transition={{ duration: 1.0, delay: 0, ease }}
         />
       </div>
 
@@ -54,7 +62,7 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
             style={{ background: "#00FFA3" }}
             initial={{ y: "-100%" }}
             animate={phase >= 1 ? { y: "0%" } : {}}
-            transition={{ duration: 0.7, delay: 0.35, ease }}
+            transition={{ duration: 1.1, delay: 0, ease }}
           >
             {/* Subtle noise texture */}
             <div className="noise-overlay absolute inset-0 opacity-[0.03]" />
@@ -119,25 +127,50 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
           </motion.div>
           </div>
 
-          {/* Community photo — desktop only */}
-          <div className="hidden lg:block relative h-[50vh] overflow-hidden">
-            <img
+          {/* Community photo — desktop only, parallax */}
+          <div ref={imgRef} className="hidden lg:block relative overflow-hidden">
+            <motion.img
               src="/images/hero-bottom.jpg"
               alt="Superteam Malaysia community event"
-              className="absolute inset-0 w-full h-full object-cover object-center"
+              className="w-full h-auto scale-[1.3]"
+              style={{ y: imgY }}
             />
           </div>
 
-          {/* 3 placeholder squares — desktop only */}
+          {/* 3 pillar boxes — desktop only */}
           <div className="hidden lg:grid grid-cols-3">
-            <div className="aspect-square bg-sol-green/10 border border-border-dim flex items-center justify-center">
-              <span className="font-mono text-text-secondary text-xs">01</span>
+            <div className="aspect-square bg-sol-green/10 border border-border-dim p-6 flex flex-col justify-between">
+              <span className="font-mono text-sol-green text-xs">01</span>
+              <div>
+                <h4 className="font-display font-bold text-text-primary text-lg mb-2">BUILD</h4>
+                <ul className="font-mono text-text-secondary text-xs space-y-1">
+                  <li>// Grants & funding</li>
+                  <li>// Bounties & jobs</li>
+                  <li>// Builder support</li>
+                </ul>
+              </div>
             </div>
-            <div className="aspect-square bg-sol-purple/10 border border-border-dim flex items-center justify-center">
-              <span className="font-mono text-text-secondary text-xs">02</span>
+            <div className="aspect-square bg-sol-purple/10 border border-border-dim p-6 flex flex-col justify-between">
+              <span className="font-mono text-sol-purple text-xs">02</span>
+              <div>
+                <h4 className="font-display font-bold text-text-primary text-lg mb-2">LEARN</h4>
+                <ul className="font-mono text-text-secondary text-xs space-y-1">
+                  <li>// Education</li>
+                  <li>// Workshops</li>
+                  <li>// Mentorship</li>
+                </ul>
+              </div>
             </div>
-            <div className="aspect-square bg-gold-accent/10 border border-border-dim flex items-center justify-center">
-              <span className="font-mono text-text-secondary text-xs">03</span>
+            <div className="aspect-square bg-gold-accent/10 border border-border-dim p-6 flex flex-col justify-between">
+              <span className="font-mono text-gold-accent text-xs">03</span>
+              <div>
+                <h4 className="font-display font-bold text-text-primary text-lg mb-2">CONNECT</h4>
+                <ul className="font-mono text-text-secondary text-xs space-y-1">
+                  <li>// Events & hackathons</li>
+                  <li>// Ecosystem access</li>
+                  <li>// Community</li>
+                </ul>
+              </div>
             </div>
           </div>
 
@@ -189,7 +222,7 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
               className="bg-bg-terminal p-6 lg:p-8 border-t border-border-dim h-full"
               initial={{ y: "-100%" }}
               animate={phase >= 1 ? { y: "0%" } : {}}
-              transition={{ duration: 0.7, delay: 0.55, ease }}
+              transition={{ duration: 1.0, delay: 0, ease }}
             >
               <motion.div
                 initial={{ opacity: 0 }}
@@ -216,7 +249,7 @@ export default function HeroSection({ animate = true }: HeroSectionProps) {
               style={{ background: "#00FFA3" }}
               initial={{ y: "-100%" }}
               animate={phase >= 1 ? { y: "0%" } : {}}
-              transition={{ duration: 0.6, delay: 0.75, ease }}
+              transition={{ duration: 1.0, delay: 0, ease }}
             >
               {/* DEBUG LABEL */}
               <span className="px-2 py-0.5 bg-yellow-500 text-black font-mono text-[10px] rounded w-fit">

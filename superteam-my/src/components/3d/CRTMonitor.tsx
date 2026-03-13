@@ -102,15 +102,6 @@ export default function CRTMonitor({
         />
       </mesh>
 
-      {/* Stand neck */}
-      <mesh position={[0, -0.23, 0.02]} material={materials.beigePlastic}>
-        <boxGeometry args={[0.25, 0.03, 0.2]} />
-      </mesh>
-
-      {/* Stand base */}
-      <mesh position={[0, -0.25, 0.02]} material={materials.darkBeige}>
-        <boxGeometry args={[0.3, 0.015, 0.22]} />
-      </mesh>
     </group>
   );
 }

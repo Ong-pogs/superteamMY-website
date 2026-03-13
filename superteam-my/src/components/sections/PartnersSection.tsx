@@ -3,6 +3,7 @@
 import { Suspense, useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Canvas } from "@react-three/fiber";
+import { Leva } from "leva";
 import * as THREE from "three";
 import { cn } from "@/lib/utils";
 import SectionLabel from "@/components/ui/SectionLabel";
@@ -134,14 +135,17 @@ function CanvasLoader() {
   );
 }
 
-// ─── Desktop 3D View ─────────────────────────────────────
+// ─── Main Section ────────────────────────────────────────
 
-function DesktopPartners() {
-  const containerRef = useRef<HTMLDivElement>(null);
+export default function PartnersSection() {
+  const isMobile = useMediaQuery("(max-width: 768px)");
+  const sectionRef = useRef<HTMLElement>(null);
   const [inView, setInView] = useState(false);
 
+  // Observe section entering viewport (desktop only)
   useEffect(() => {
-    const el = containerRef.current;
+    if (isMobile) return;
+    const el = sectionRef.current;
     if (!el) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -154,77 +158,118 @@ function DesktopPartners() {
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [isMobile]);
 
+  // ─── Mobile layout ───────────────────────────────────
+  if (isMobile) {
+    return (
+      <section id="partners" className="relative py-24 px-6">
+        <div className="mx-auto max-w-7xl space-y-12">
+          <SectionLabel number="04" label="Network" />
+          <div className="space-y-2">
+            <h2 className="font-display text-3xl font-black tracking-tight text-text-primary">
+              PARTNERS & ALLIES
+            </h2>
+            <p className="font-mono text-xs text-text-secondary tracking-[0.1em] uppercase">
+              // Trusted protocols powering the Superteam MY network
+            </p>
+          </div>
+          <MobilePartners />
+          <div className="flex items-center justify-between pt-4 border-t border-border-dim">
+            <div className="font-mono text-[0.55rem] text-text-secondary/40 tracking-[0.15em] uppercase">
+              {MOCK_PARTNERS.length} active connections // All channels operational
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-sol-green pulse-glow" />
+              <span className="font-mono text-[0.55rem] text-sol-green/60 tracking-[0.15em] uppercase">
+                Network Healthy
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // ─── Desktop: full-viewport 3D scene ──────────────────
   return (
-    <motion.div
-      ref={containerRef}
-      initial={{ opacity: 0, y: 40 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: "easeOut" as const }}
-      viewport={{ once: true, margin: "-80px" }}
-      className="relative w-full mx-auto"
-      style={{ aspectRatio: "16 / 9", maxHeight: "520px" }}
+    <>
+    {/* Leva debug panel — toggle "Edit Mode" in the Scene folder to show controls */}
+    <Leva collapsed />
+    <section
+      ref={sectionRef}
+      id="partners"
+      className="relative h-screen min-h-[600px] max-h-[1200px] overflow-hidden"
     >
-      {/* R3F Canvas */}
-      <Canvas
-        camera={{ position: [0, 0.5, 3.5], fov: 40 }}
-        dpr={[1, 1.5]}
-        gl={{ alpha: true, antialias: true, toneMapping: THREE.NoToneMapping }}
-        style={{ background: "transparent" }}
-      >
-        <Suspense fallback={null}>
-          <MonitorPyramid visible={inView} />
-        </Suspense>
-      </Canvas>
+      {/* Full-bleed R3F Canvas */}
+      <div className="absolute inset-0">
+        <Canvas
+          camera={{ position: [0, 0.5, 3.5], fov: 40 }}
+          dpr={[1, 1.5]}
+          gl={{ alpha: true, antialias: true, toneMapping: THREE.NoToneMapping }}
+          style={{ background: "transparent" }}
+        >
+          <Suspense fallback={null}>
+            <MonitorPyramid visible={inView} />
+          </Suspense>
+        </Canvas>
+      </div>
 
-      {/* Scanline overlay on top of Canvas */}
+      {/* Scanline overlay */}
       <div className="absolute inset-0 pointer-events-none z-10">
         <ScanlineOverlay />
       </div>
 
-      {/* Loading fallback (hidden once in view) */}
-      {!inView && <CanvasLoader />}
-    </motion.div>
-  );
-}
+      {/* Subtle vignette edge fade */}
+      <div
+        className="absolute inset-0 pointer-events-none z-10"
+        style={{
+          background: `
+            linear-gradient(180deg, rgba(10,10,15,0.6) 0%, transparent 18%, transparent 82%, rgba(10,10,15,0.6) 100%),
+            linear-gradient(90deg, rgba(10,10,15,0.4) 0%, transparent 12%, transparent 88%, rgba(10,10,15,0.4) 100%)
+          `,
+        }}
+      />
 
-// ─── Main Section ────────────────────────────────────────
-
-export default function PartnersSection() {
-  const isMobile = useMediaQuery("(max-width: 768px)");
-
-  return (
-    <section id="partners" className="relative py-24 px-6">
-      <div className="mx-auto max-w-7xl space-y-12">
-        {/* Section header */}
+      {/* Header overlay — top-left */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+        viewport={{ once: true }}
+        className="absolute top-8 left-8 z-20"
+      >
         <SectionLabel number="04" label="Network" />
+        <h2 className="mt-3 font-display text-3xl md:text-4xl font-black tracking-tight text-text-primary">
+          PARTNERS & ALLIES
+        </h2>
+        <p className="mt-1 font-mono text-xs text-text-secondary/60 tracking-[0.1em] uppercase">
+          // Trusted protocols powering the Superteam MY network
+        </p>
+      </motion.div>
 
-        <div className="space-y-2">
-          <h2 className="font-display text-3xl md:text-4xl font-black tracking-tight text-text-primary">
-            PARTNERS & ALLIES
-          </h2>
-          <p className="font-mono text-xs text-text-secondary tracking-[0.1em] uppercase">
-            // Trusted protocols powering the Superteam MY network
-          </p>
+      {/* Bottom status bar overlay */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.4 }}
+        viewport={{ once: true }}
+        className="absolute bottom-8 left-8 right-8 z-20 flex items-center justify-between"
+      >
+        <div className="font-mono text-[0.55rem] text-text-secondary/40 tracking-[0.15em] uppercase">
+          {MOCK_PARTNERS.length} active connections // All channels operational
         </div>
-
-        {/* 3D on desktop, 2D grid on mobile */}
-        {isMobile ? <MobilePartners /> : <DesktopPartners />}
-
-        {/* Bottom status bar */}
-        <div className="flex items-center justify-between pt-4 border-t border-border-dim">
-          <div className="font-mono text-[0.55rem] text-text-secondary/40 tracking-[0.15em] uppercase">
-            {MOCK_PARTNERS.length} active connections // All channels operational
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-1.5 w-1.5 rounded-full bg-sol-green pulse-glow" />
-            <span className="font-mono text-[0.55rem] text-sol-green/60 tracking-[0.15em] uppercase">
-              Network Healthy
-            </span>
-          </div>
+        <div className="flex items-center gap-2">
+          <div className="h-1.5 w-1.5 rounded-full bg-sol-green pulse-glow" />
+          <span className="font-mono text-[0.55rem] text-sol-green/60 tracking-[0.15em] uppercase">
+            Network Healthy
+          </span>
         </div>
-      </div>
+      </motion.div>
+
+      {/* Loading state */}
+      {!inView && <CanvasLoader />}
     </section>
+    </>
   );
 }
