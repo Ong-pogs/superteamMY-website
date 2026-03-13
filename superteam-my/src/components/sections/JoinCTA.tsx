@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence, useInView } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Send, Twitter } from "lucide-react";
 import Button from "@/components/ui/Button";
@@ -125,45 +125,12 @@ export default function JoinCTA() {
 
       {/* ── content ────────────────────────────────────── */}
       <div className="relative mx-auto max-w-7xl">
-        {/* meta + brand */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={isInView ? { opacity: 1, y: 0 } : undefined}
-          transition={{ duration: 0.5, delay: 0 }}
-          className="mb-1 font-mono text-xs tracking-[0.3em] text-text-secondary/60"
-        >
-          EPISOD_01 / MMXXVI
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={isInView ? { opacity: 1, y: 0 } : undefined}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="mb-10 font-mono text-sm tracking-[0.3em] text-text-secondary lg:mb-14"
-        >
-          SUPERTEAM // MY
-        </motion.div>
-
         {/* ── split layout ─────────────────────────────── */}
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-8 items-start">
           {/* LEFT — cycling word */}
           <div className="relative lg:col-span-7">
             <Crosshair position="top-left" />
             <Crosshair position="bottom-right" />
-
-            {/* language label */}
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={current.lang}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 10 }}
-                transition={{ duration: 0.2, ease: "easeOut" as const }}
-                className="mb-2 font-mono text-xs tracking-[0.2em] text-sol-green"
-              >
-                [{current.lang}]
-              </motion.div>
-            </AnimatePresence>
 
             {/* glitch word */}
             <motion.div

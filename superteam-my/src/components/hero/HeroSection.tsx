@@ -4,24 +4,15 @@ import { useState, useEffect, useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import LanguageSwap from "./LanguageSwap";
 import SystemStatus from "./SystemStatus";
-import GlassShatter from "@/components/effects/GlassShatter";
 import MalaysiaMap from "./MalaysiaMap";
 
 interface HeroSectionProps {
-  /** Start slow panel slide-ins (phase 1) — during CRT wipe */
   revealing?: boolean;
-  /** Start text/content animations (phase 2) — after CRT expand */
   entered?: boolean;
 }
 
-// Animation phases:
-// 0 — Waiting (nothing visible, grey cover on top)
-// 1 — Panels slide in slowly, grey cover drops away (during CRT wipe)
-// 2 — Typography slides up, sidebar content fades in (after CRT expand)
-
 export default function HeroSection({ revealing = false, entered = false }: HeroSectionProps) {
   const [phase, setPhase] = useState(0);
-  const [gHovered, setGHovered] = useState(false);
 
   // Both phases wait for CRT expand to complete (entered=true)
   useEffect(() => {
@@ -99,24 +90,14 @@ export default function HeroSection({ revealing = false, entered = false }: Hero
             {/* Subtle noise texture */}
             <div className="noise-overlay absolute inset-0 opacity-[0.03]" />
 
-            {/* DEBUG LABEL */}
-            <div className="absolute top-2 left-2 z-50 px-2 py-0.5 bg-red-500 text-white font-mono text-[10px] rounded">
-              A — Main Gradient Panel
-            </div>
-
-            {/* 3D Glass </> shatter effect — disabled for now */}
-            {/* <div className="absolute right-8 top-8 w-[280px] h-[280px] z-10 hidden lg:block pointer-events-auto">
-              <GlassShatter />
-            </div> */}
-
             {/* Text container — centered-low, like Shift5 */}
             <div className="relative h-full flex flex-col justify-center px-6 sm:px-10 md:px-14 lg:px-16 xl:px-20 pt-24 lg:pt-[20vh]">
               {/* Text + subtitle wrapper for relative positioning */}
               <div className="relative">
-                {/* SUPER// — masked slide-up */}
+                {/* SUPER// — masked slide-up with animated grain texture */}
                 <div className="overflow-hidden">
                   <motion.h1
-                    className="font-display font-black leading-[0.85]"
+                    className="font-display font-black leading-[0.85] hero-text-grain"
                     style={{
                       fontSize: "clamp(3.5rem, 13vw, 13rem)",
                       background: "linear-gradient(135deg, #9945FF 0%, #14F195 100%)",
@@ -135,7 +116,7 @@ export default function HeroSection({ revealing = false, entered = false }: Hero
                 {/* TEAM — masked slide-up (staggered) */}
                 <div className="overflow-hidden">
                   <motion.h1
-                    className="font-display font-black leading-[0.85]"
+                    className="font-display font-black leading-[0.85] hero-text-grain"
                     style={{
                       fontSize: "clamp(3.5rem, 13vw, 13rem)",
                       background: "linear-gradient(135deg, #9945FF 0%, #14F195 100%)",
@@ -226,19 +207,11 @@ export default function HeroSection({ revealing = false, entered = false }: Hero
               animate={phase >= 2 ? { opacity: 1 } : {}}
               transition={{ duration: 0.5, delay: 0.4 }}
             >
-              {/* DEBUG LABEL */}
-              <span className="px-2 py-0.5 bg-blue-500 text-white font-mono text-[10px] rounded">
-                C — Description Panel
-              </span>
               <p className="font-display text-base xl:text-lg text-[#0A0A0F]/80 leading-relaxed">
                 Connecting developers, designers, and founders to power the Solana ecosystem in Southeast Asia.
               </p>
 
               <div className="flex flex-col gap-2">
-                {/* DEBUG LABEL */}
-                <span className="px-2 py-0.5 bg-purple-500 text-white font-mono text-[10px] rounded w-fit">
-                  E — Language Swap
-                </span>
                 <div className="flex items-center gap-4">
                   <div className="h-px flex-1 bg-[#0A0A0F]/15" />
                   <LanguageSwap className="font-display font-black text-xl xl:text-2xl !text-[#0A0A0F]" />
@@ -263,11 +236,7 @@ export default function HeroSection({ revealing = false, entered = false }: Hero
                 animate={phase >= 2 ? { opacity: 1 } : {}}
                 transition={{ duration: 0.5, delay: 0.5 }}
               >
-                {/* DEBUG LABEL */}
-                <span className="px-2 py-0.5 bg-green-600 text-white font-mono text-[10px] rounded">
-                  D — Community Status Panel
-                </span>
-                <h3 className="font-display font-bold text-lg xl:text-xl text-text-primary mb-5 mt-2">
+                <h3 className="font-display font-bold text-lg xl:text-xl text-text-primary mb-5">
                   Community Status
                 </h3>
                 <SystemStatus />
@@ -277,137 +246,34 @@ export default function HeroSection({ revealing = false, entered = false }: Hero
 
             {/* Panel G */}
             <div className="overflow-hidden lg:h-[50vh]">
-            <motion.div
-              className="relative cursor-pointer overflow-hidden h-full"
+            <motion.a
+              href="#mission"
+              className="group relative p-6 lg:p-8 flex flex-col justify-between cursor-pointer overflow-hidden h-full"
               style={{ background: "#00FFA3" }}
               initial={{ y: "-100%" }}
               animate={phase >= 1 ? { y: "0%" } : {}}
               transition={{ duration: 1.6, delay: 0.35, ease }}
-              onMouseEnter={() => setGHovered(true)}
-              onMouseLeave={() => setGHovered(false)}
             >
-              {/* DEBUG LABEL */}
-              <span className="absolute top-2 left-2 z-10 px-2 py-0.5 bg-yellow-500 text-black font-mono text-[10px] rounded w-fit">
-                G — Bottom Row
-              </span>
-
-              {/* Default state — arrow top-right + text bottom */}
-              <motion.div
-                className="absolute inset-0 p-6 lg:p-8 flex flex-col justify-between"
-                animate={{ opacity: gHovered ? 0 : 1 }}
-                transition={{ duration: 0.25 }}
-              >
-                <div className="flex justify-end">
-                  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" className="text-[#0A0A0F]">
-                    <path d="M14 34L34 14M34 14H18M34 14V30" stroke="currentColor" strokeWidth="3.5" strokeLinecap="square" />
-                  </svg>
-                </div>
-                <p className="font-display text-lg xl:text-xl text-[#0A0A0F]/80 leading-snug">
-                  Explore the community.
-                </p>
-              </motion.div>
-
-              {/* Arrow — animates to center and rotates down */}
-              <motion.div
-                className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                initial={false}
-                animate={{ opacity: gHovered ? 1 : 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <motion.svg
+              <div className="flex justify-end">
+                <svg
                   width="48"
                   height="48"
                   viewBox="0 0 48 48"
                   fill="none"
-                  className="text-[#0A0A0F]"
-                  initial={false}
-                  animate={{ rotate: gHovered ? 90 : 0 }}
-                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] as const }}
+                  className="text-[#0A0A0F] transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1"
                 >
-                  <path d="M14 34L34 14M34 14H18M34 14V30" stroke="currentColor" strokeWidth="3.5" strokeLinecap="square" />
-                </motion.svg>
-              </motion.div>
-
-              {/* Split cards — slide in from sides on hover */}
-              <motion.div
-                className="absolute inset-0 flex"
-                initial={false}
-                animate={{ opacity: gHovered ? 1 : 0 }}
-                transition={{ duration: 0.2 }}
-                style={{ pointerEvents: gHovered ? "auto" : "none" }}
-              >
-                {/* Left — Join Community */}
-                <motion.a
-                  href="https://t.me/superteammy"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="relative w-1/2 h-full flex flex-col items-center justify-end p-6 lg:p-8 pb-8 lg:pb-10"
-                  style={{ background: "#00FFA3" }}
-                  initial={false}
-                  animate={{ x: gHovered ? "0%" : "-101%" }}
-                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] as const }}
-                >
-                  {/* Animated outline */}
-                  <motion.div
-                    className="absolute inset-3 border-2 border-[#0A0A0F]/20 rounded-sm pointer-events-none"
-                    initial={false}
-                    animate={{
-                      opacity: gHovered ? 1 : 0,
-                      scale: gHovered ? 1 : 0.92,
-                    }}
-                    transition={{ duration: 0.4, delay: gHovered ? 0.25 : 0, ease: [0.16, 1, 0.3, 1] as const }}
+                  <path
+                    d="M14 34L34 14M34 14H18M34 14V30"
+                    stroke="currentColor"
+                    strokeWidth="3.5"
+                    strokeLinecap="square"
                   />
-                  <div className="flex flex-col items-center gap-3">
-                    <svg width="28" height="28" viewBox="0 0 48 48" fill="none" className="text-[#0A0A0F]/60">
-                      <path d="M24 14V34M24 34L16 26M24 34L32 26" stroke="currentColor" strokeWidth="3.5" strokeLinecap="square" />
-                    </svg>
-                    <span className="font-display font-bold text-sm xl:text-base text-[#0A0A0F] text-center leading-tight">
-                      Join<br />Community
-                    </span>
-                  </div>
-                </motion.a>
-
-                {/* Divider */}
-                <motion.div
-                  className="w-px self-stretch bg-[#0A0A0F]/20 z-10 origin-center"
-                  initial={false}
-                  animate={{
-                    scaleY: gHovered ? 1 : 0,
-                    opacity: gHovered ? 1 : 0,
-                  }}
-                  transition={{ duration: 0.35, delay: gHovered ? 0.2 : 0 }}
-                />
-
-                {/* Right — Explore Opportunities */}
-                <motion.a
-                  href="#mission"
-                  className="relative w-1/2 h-full flex flex-col items-center justify-end p-6 lg:p-8 pb-8 lg:pb-10"
-                  style={{ background: "#00FFA3" }}
-                  initial={false}
-                  animate={{ x: gHovered ? "0%" : "101%" }}
-                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] as const }}
-                >
-                  {/* Animated outline */}
-                  <motion.div
-                    className="absolute inset-3 border-2 border-[#0A0A0F]/20 rounded-sm pointer-events-none"
-                    initial={false}
-                    animate={{
-                      opacity: gHovered ? 1 : 0,
-                      scale: gHovered ? 1 : 0.92,
-                    }}
-                    transition={{ duration: 0.4, delay: gHovered ? 0.25 : 0, ease: [0.16, 1, 0.3, 1] as const }}
-                  />
-                  <div className="flex flex-col items-center gap-3">
-                    <svg width="28" height="28" viewBox="0 0 48 48" fill="none" className="text-[#0A0A0F]/60">
-                      <path d="M24 14V34M24 34L16 26M24 34L32 26" stroke="currentColor" strokeWidth="3.5" strokeLinecap="square" />
-                    </svg>
-                    <span className="font-display font-bold text-sm xl:text-base text-[#0A0A0F] text-center leading-tight">
-                      Explore<br />Opportunities
-                    </span>
-                  </div>
-                </motion.a>
-              </motion.div>
-            </motion.div>
+                </svg>
+              </div>
+              <p className="font-display text-lg xl:text-xl text-[#0A0A0F]/80 leading-snug">
+                Explore the community.
+              </p>
+            </motion.a>
             </div>
           </div>
           {/* Spacer — fills sidebar alongside 3 boxes with terminal bg so Panel G doesn't poke out */}
