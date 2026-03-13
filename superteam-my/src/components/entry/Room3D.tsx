@@ -561,6 +561,265 @@ function Room({
   );
 }
 
+// ─── Retro Radio / Boombox ───────────────────────────────
+
+function Radio({
+  materials,
+  position,
+}: {
+  materials: ReturnType<typeof useMaterials>;
+  position: [number, number, number];
+}) {
+  const [playing, setPlaying] = useState(false);
+  const ledRef = useRef<THREE.Mesh>(null!);
+  const speakerLRef = useRef<THREE.Mesh>(null!);
+  const speakerRRef = useRef<THREE.Mesh>(null!);
+
+  // Web Audio API refs — always muffled (lo-fi vibe)
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+
+  // Pulsing speaker glow + LED (purple)
+  useFrame((state) => {
+    if (!ledRef.current) return;
+    const t = state.clock.elapsedTime;
+    const mat = ledRef.current.material as THREE.MeshStandardMaterial;
+    if (playing) {
+      mat.emissiveIntensity = 2 + Math.sin(t * 4) * 1;
+      const pulse = 1 + Math.sin(t * 8) * 0.02;
+      if (speakerLRef.current) speakerLRef.current.scale.setScalar(pulse);
+      if (speakerRRef.current) speakerRRef.current.scale.setScalar(pulse);
+    } else {
+      mat.emissiveIntensity = 0.3;
+      if (speakerLRef.current) speakerLRef.current.scale.setScalar(1);
+      if (speakerRRef.current) speakerRRef.current.scale.setScalar(1);
+    }
+  });
+
+  const togglePlay = useCallback(() => {
+    // Lazily create AudioContext + nodes on first click (browser requires user gesture)
+    if (!audioCtxRef.current) {
+      const ctx = new AudioContext();
+      const audio = new Audio("/audio/radio.mp3");
+      audio.loop = true;
+      audio.crossOrigin = "anonymous";
+
+      const source = ctx.createMediaElementSource(audio);
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+
+      // Always muffled — lo-fi room sound
+      filter.type = "lowpass";
+      filter.frequency.value = 900;
+      filter.Q.value = 0.8;
+      gain.gain.value = 0.35;
+
+      // Chain: source → filter → gain → destination
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      audioCtxRef.current = ctx;
+      audioElRef.current = audio;
+    }
+
+    if (playing) {
+      audioElRef.current!.pause();
+    } else {
+      audioCtxRef.current!.resume();
+      audioElRef.current!.play().catch(() => {});
+    }
+    setPlaying((p) => !p);
+  }, [playing]);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioElRef.current) {
+        audioElRef.current.pause();
+        audioElRef.current = null;
+      }
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close();
+        audioCtxRef.current = null;
+      }
+    };
+  }, []);
+
+  const radioMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: new THREE.Color("#1a1a1a"),
+        roughness: 0.7,
+        metalness: 0.15,
+      }),
+    [],
+  );
+
+  const grillMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: new THREE.Color("#333333"),
+        roughness: 0.5,
+        metalness: 0.3,
+      }),
+    [],
+  );
+
+  return (
+    <group position={position}>
+      {/* Main body */}
+      <mesh material={radioMat}>
+        <boxGeometry args={[0.4, 0.18, 0.14]} />
+      </mesh>
+
+      {/* Top ridge */}
+      <mesh position={[0, 0.095, 0]} material={radioMat}>
+        <boxGeometry args={[0.42, 0.01, 0.15]} />
+      </mesh>
+
+      {/* Left speaker grille */}
+      <group position={[-0.12, 0, 0.071]}>
+        <mesh material={grillMat}>
+          <cylinderGeometry args={[0.055, 0.055, 0.005, 16]} />
+        </mesh>
+        <mesh ref={speakerLRef} position={[0, 0, 0.003]}>
+          <cylinderGeometry args={[0.04, 0.04, 0.006, 16]} />
+          <meshStandardMaterial
+            color="#222222"
+            roughness={0.8}
+            metalness={0.1}
+          />
+        </mesh>
+        {/* Speaker rings */}
+        {[0.03, 0.045].map((r, i) => (
+          <mesh key={i} position={[0, 0, 0.004]} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[r, 0.002, 8, 24]} />
+            <meshStandardMaterial color="#444444" roughness={0.4} metalness={0.5} />
+          </mesh>
+        ))}
+      </group>
+
+      {/* Right speaker grille */}
+      <group position={[0.12, 0, 0.071]}>
+        <mesh material={grillMat}>
+          <cylinderGeometry args={[0.055, 0.055, 0.005, 16]} />
+        </mesh>
+        <mesh ref={speakerRRef} position={[0, 0, 0.003]}>
+          <cylinderGeometry args={[0.04, 0.04, 0.006, 16]} />
+          <meshStandardMaterial
+            color="#222222"
+            roughness={0.8}
+            metalness={0.1}
+          />
+        </mesh>
+        {[0.03, 0.045].map((r, i) => (
+          <mesh key={i} position={[0, 0, 0.004]} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[r, 0.002, 8, 24]} />
+            <meshStandardMaterial color="#444444" roughness={0.4} metalness={0.5} />
+          </mesh>
+        ))}
+      </group>
+
+      {/* Center display area */}
+      <mesh position={[0, 0.02, 0.072]}>
+        <boxGeometry args={[0.08, 0.04, 0.003]} />
+        <meshStandardMaterial
+          color={playing ? "#1a0a1a" : "#0a0a0a"}
+          emissive={playing ? "#9945FF" : "#1a0033"}
+          emissiveIntensity={playing ? 0.3 : 0.05}
+          roughness={0.1}
+          metalness={0.3}
+        />
+      </mesh>
+
+      {/* Tuning dial */}
+      <mesh position={[0, -0.04, 0.073]} rotation={[Math.PI / 2, 0, 0]} material={materials.brushedMetal}>
+        <cylinderGeometry args={[0.012, 0.012, 0.01, 12]} />
+      </mesh>
+
+      {/* Volume dial */}
+      <mesh position={[0.035, -0.04, 0.073]} rotation={[Math.PI / 2, 0, 0]} material={materials.brushedMetal}>
+        <cylinderGeometry args={[0.01, 0.01, 0.01, 12]} />
+      </mesh>
+
+      {/* Power LED */}
+      <mesh ref={ledRef} position={[-0.035, -0.04, 0.073]}>
+        <sphereGeometry args={[0.004, 8, 8]} />
+        <meshStandardMaterial
+          color={playing ? "#9945FF" : "#1a0033"}
+          emissive={playing ? "#9945FF" : "#0a0015"}
+          emissiveIntensity={playing ? 3 : 0.3}
+        />
+      </mesh>
+
+      {/* Antenna — telescoping */}
+      <group position={[0.15, 0.1, -0.02]}>
+        {/* Base */}
+        <mesh material={materials.brushedMetal}>
+          <cylinderGeometry args={[0.005, 0.005, 0.02, 6]} />
+        </mesh>
+        {/* Middle */}
+        <mesh position={[0.02, 0.1, 0]} rotation={[0, 0, -0.3]} material={materials.brushedMetal}>
+          <cylinderGeometry args={[0.003, 0.004, 0.2, 6]} />
+        </mesh>
+        {/* Tip */}
+        <mesh position={[0.04, 0.22, 0]} rotation={[0, 0, -0.3]} material={materials.brushedMetal}>
+          <cylinderGeometry args={[0.002, 0.003, 0.1, 6]} />
+        </mesh>
+        {/* Antenna tip ball */}
+        <mesh position={[0.05, 0.27, 0]}>
+          <sphereGeometry args={[0.005, 8, 8]} />
+          <meshStandardMaterial color="#888888" roughness={0.3} metalness={0.8} />
+        </mesh>
+      </group>
+
+      {/* Handle */}
+      <group position={[0, 0.12, 0]}>
+        <mesh position={[-0.1, 0, 0]} material={materials.darkPlastic}>
+          <boxGeometry args={[0.01, 0.04, 0.01]} />
+        </mesh>
+        <mesh position={[0.1, 0, 0]} material={materials.darkPlastic}>
+          <boxGeometry args={[0.01, 0.04, 0.01]} />
+        </mesh>
+        <mesh position={[0, 0.02, 0]} material={materials.brushedMetal}>
+          <boxGeometry args={[0.2, 0.008, 0.008]} />
+        </mesh>
+      </group>
+
+      {/* Invisible click zone */}
+      <mesh
+        visible={false}
+        onClick={(e) => {
+          e.stopPropagation();
+          togglePlay();
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation();
+          document.body.style.cursor = "pointer";
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = "default";
+        }}
+      >
+        <boxGeometry args={[0.5, 0.35, 0.2]} />
+        <meshBasicMaterial />
+      </mesh>
+
+      {/* Purple glow when playing */}
+      {playing && (
+        <pointLight
+          position={[0, 0, 0.15]}
+          color="#9945FF"
+          intensity={0.8}
+          distance={1.5}
+          decay={2}
+        />
+      )}
+    </group>
+  );
+}
+
 // ─── Click detection ─────────────────────────────────────
 
 function ClickZone({
@@ -1004,6 +1263,13 @@ export default function Room3D({ onEnter }: Room3DProps) {
     angle: { value: 0.9, min: 0.1, max: 1.5, step: 0.01 },
   });
 
+  const radio = useControls("Radio", {
+    x: { value: -0.7, min: -6, max: 4, step: 0.05 },
+    y: { value: 0.05, min: -2, max: 3, step: 0.05 },
+    z: { value: -0.35, min: -6, max: 4, step: 0.05 },
+    rotY: { value: 0.5, min: 0, max: Math.PI * 2, step: 0.05 },
+  });
+
   const cam = useControls("Camera", {
     startX: { value: 2.35, min: -5, max: 10, step: 0.05 },
     startY: { value: 1.54, min: 0, max: 5, step: 0.05 },
@@ -1076,6 +1342,14 @@ export default function Room3D({ onEnter }: Room3DProps) {
           {phase === "idle" && (
             <ClickZone onClick={handleClickPC} onHover={setHovered} />
           )}
+        </group>
+
+        {/* Retro radio — position via Leva controls */}
+        <group position={[radio.x, radio.y, radio.z]} rotation={[0, radio.rotY, 0]}>
+          <Radio
+            materials={materials}
+            position={[0, 0, 0]}
+          />
         </group>
 
         <Room materials={materials} cfg={cfg} />

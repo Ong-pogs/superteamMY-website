@@ -21,8 +21,14 @@ export default function Home() {
   const [revealing, setRevealing] = useState(false);
   const siteRef = useRef<HTMLDivElement>(null);
 
-  // Safety: clear any leftover inline clip-path after transition
+  // Hide scrollbar during 3D room, restore after enter
   useEffect(() => {
+    if (!entered) {
+      document.documentElement.style.overflow = "hidden";
+    } else {
+      document.documentElement.style.overflow = "";
+    }
+    // Safety: clear any leftover inline clip-path after transition
     if (entered && siteRef.current) {
       siteRef.current.style.clipPath = '';
     }

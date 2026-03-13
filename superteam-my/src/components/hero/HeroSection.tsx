@@ -145,7 +145,7 @@ export default function HeroSection({ revealing = false, entered = false }: Hero
                 </div>
 
                 {/* Malaysia map outline — Peninsular + East Malaysia */}
-                <MalaysiaMap className="absolute right-4 lg:right-8 bottom-4 lg:bottom-8 w-[250px] lg:w-[500px] xl:w-[650px] opacity-[0.35]" />
+                <MalaysiaMap className="absolute right-4 lg:-right-8 bottom-4 lg:-bottom-8 w-[300px] lg:w-[700px] xl:w-[900px] opacity-[0.35]" />
               </div>
             </div>
           </motion.div>
